@@ -23,6 +23,10 @@ class main_controller extends CI_Controller {
         $this->load->view('../views/create/quiz_creator');
     }
 
+    public function overall_ranking() {
+        $this->load->view('../views/ranking/rank');
+    }
+
     public function submit() {
         $items = array('player_name', 'room_pin');
         $this->session->unset_userdata($items);
@@ -163,6 +167,16 @@ class main_controller extends CI_Controller {
         echo json_encode(['status' => 'success', 'score' => $score]);
     }
     
+    public function get_all_ranking() {
+        $roomId = $this->input->post('roomId');
+        
+        $players = $this->quiz_model->get_all_players_final_scores($roomId); // Get players from the model
+
+        // Return the response as JSON
+        $this->output
+            ->set_content_type('application/json')
+            ->set_output(json_encode(['players' => $players])); // Format the response
+    }
         
     public function hostgame() {
         $roomPin = $this->session->userdata('room_pin');
@@ -265,21 +279,31 @@ class main_controller extends CI_Controller {
         // Get the room pin from session data
         $roomPin = $this->session->userdata('room_pin');
         $roomId = $this->session->userdata('roomId');
-    
+        
         // Check if the room pin exists in the session
         if ($roomPin && $roomId) {
             // Update the room's validity status
             $this->quiz_model->invalidate_room($roomId);
             $this->quiz_model->exit_all_participants($roomPin);
             $this->quiz_model->delete_room_questions($roomId);
+            
+            // Define the path to the directory
+            $dirPath = './assets/images/quiz/Room-' . $roomId;
     
+            // Attempt to delete the directory and its contents
+            if ($this->_delete_directory($dirPath)) {
+                // Set a flash message for success
+                $this->session->set_flashdata('status', 'success');
+                $this->session->set_flashdata('msg', 'You have left the room successfully and the room data has been deleted.');
+            } else {
+                // Set a flash message for partial success
+                $this->session->set_flashdata('status', 'warning');
+                $this->session->set_flashdata('msg', 'Room data has been deleted, but there was an issue removing the directory.');
+            }
+            
             // Unset the roomPin session data
             $items = array('player_name', 'room_pin');
             $this->session->unset_userdata($items);
-    
-            // Set a flash message for success
-            $this->session->set_flashdata('status', 'success');
-            $this->session->set_flashdata('msg', 'You have left the room successfully.');
         } else {
             // Set a flash message for error
             $this->session->set_flashdata('status', 'error');
@@ -342,18 +366,19 @@ class main_controller extends CI_Controller {
         echo json_encode($response);
     }
 
-    // Function to fetch players' scores per question
     public function fetch_players_score_per_q() {
         $question_id = $this->input->get('question_id');
-        
-        // Your logic to fetch player data based on question_id
-        // Example result
-        $players = $this->quiz_model->get_player_scores($question_id);
-        
+        $room_id = $this->input->get('room_id');
+    
+        // Log the input parameters
+        log_message('info', "Fetching scores for Question ID: $question_id, Room ID: $room_id");
+    
+        $players = $this->quiz_model->get_player_scores($question_id, $room_id);
+    
         if ($players) {
             $response = [
                 'status' => 'success',
-                'players' => $players // Ensure this is an array
+                'players' => $players
             ];
         } else {
             $response = [
@@ -362,9 +387,8 @@ class main_controller extends CI_Controller {
             ];
         }
     
-        // Return the JSON response
         echo json_encode($response);
-    }    
+    }      
 
     public function fetch_room_id() {
         $roomPin = $this->input->post('roomPin');

@@ -56,6 +56,7 @@ $route['room/host/(:num)'] = 'main_controller/hostgame/$1';
 $route['quiz_creator'] = 'main_controller/creator';
 $route['start_game'] = 'main_controller/start_game';
 $route['start_game_host'] = 'main_controller/start_game_host';
+$route['overall_ranking'] = 'main_controller/overall_ranking';
 $route['404_override'] = '';
 $route['translate_uri_dashes'] = FALSE;
 

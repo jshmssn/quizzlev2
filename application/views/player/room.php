@@ -85,16 +85,10 @@
     <script type="text/javascript">
     $(document).ready(function() {
         // Retrieve roomPin and playerName from localStorage
-        const storedRoomPin = localStorage.getItem('roomPin');
-        const storedPlayerName = localStorage.getItem('playerName');
-        
-        const roomPin = storedRoomPin || $('#room-pin').val();
-        const playerName = storedPlayerName || "<?php echo $this->session->userdata('player_name'); ?>";
+        const roomPin = document.getElementById('room-pin').value;
 
-        // Store roomPin and playerName in localStorage
-        localStorage.setItem('roomPin', roomPin);
-        localStorage.setItem('playerName', playerName);
-        
+        const playerName = "<?php echo $this->session->userdata('player_name'); ?>";
+
         let roomId;
 
         // Function to fetch room ID from the server
