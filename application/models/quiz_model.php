@@ -23,7 +23,7 @@ class quiz_model extends CI_Model {
         // Return the result as an associative array
         return $query->result_array();
     }    
-
+    
     public function save_question($questionText, $answers, $correctAnswerIndex, $roomId, $time, $imagePath, $isFill) {
         // Insert the question
         $data = array(
