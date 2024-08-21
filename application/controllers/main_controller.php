@@ -163,6 +163,16 @@ class main_controller extends CI_Controller {
         echo json_encode(['status' => 'success', 'score' => $score]);
     }
     
+    public function get_all_ranking() {
+        $roomId = $this->input->post('roomId');
+        
+        $players = $this->quiz_model->get_all_players_final_scores($roomId); // Get players from the model
+
+        // Return the response as JSON
+        $this->output
+            ->set_content_type('application/json')
+            ->set_output(json_encode(['players' => $players])); // Format the response
+    }
         
     public function hostgame() {
         $roomPin = $this->session->userdata('room_pin');

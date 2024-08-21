@@ -4,6 +4,11 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Multiple Choice</title>
+    
+<!-- Bootstrap JS and dependencies -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.7.1/jquery.min.js" integrity="sha512-v2CJ7UaYy4JwqLDIrZUI/4hqeoQieOmAZNXBeQyjo21dadnwR+8ZaIJVT8EE2iyI61OV8e6M8PP2/4hpQINQ/g==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.5.4/dist/umd/popper.min.js"></script>
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
     <!-- Bootstrap CSS -->
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" integrity="sha384-T3c6CoIi6uLrA9TneNEoa7RxnatzjcDSCmG1MXxSR1GAsXEV/Dwwykc2MPK8M2HN" crossorigin="anonymous">
     <!-- Google Fonts -->
@@ -104,31 +109,6 @@
             margin-bottom: 10px;
             transition: width 1s linear;
         }
-        @media (max-width: 768px) {
-            .player-list {
-                margin-bottom: 20px;
-            }
-            #question-text {
-                font-size: 1.25rem;
-            }
-            #answers {
-                flex-direction: column; /* Stack answers vertically on mobile devices */
-            }
-            .btn.answer-btn {
-                font-size: 1rem;
-                width: 100%; /* Make buttons full width on mobile devices */
-            }
-        }
-
-        @media (max-width: 576px) {
-            #question-text {
-                font-size: 1rem;
-            }
-            .btn.answer-btn {
-                font-size: 0.9rem;
-                flex-direction: column;
-            }
-        }
         .hidden {
             display: none;
         }
@@ -177,6 +157,68 @@
             position: absolute;
             right: 0;
         }
+        @media (max-width: 768px) {
+            .player-list {
+                margin-bottom: 20px;
+            }
+            #question-text {
+                font-size: 1.25rem;
+            }
+            #answers {
+                flex-direction: column; /* Stack answers vertically on mobile devices */
+            }
+            .btn.answer-btn {
+                font-size: 1rem;
+                width: 100%; /* Make buttons full width on mobile devices */
+            }
+            .swal2-html-container .ranking-table th, 
+            .swal2-html-container .ranking-table td {
+                font-size: 12px;
+                padding: 8px;
+            }
+        }
+        @media (max-width: 576px) {
+            #question-text {
+                font-size: 1rem;
+            }
+            .btn.answer-btn {
+                font-size: 0.9rem;
+            }
+        }
+        @media (max-width: 480px) {
+            .swal2-html-container .ranking-table th, 
+            .swal2-html-container .ranking-table td {
+                font-size: 10px;
+                padding: 5px;
+            }
+        }
+        .hidden {
+            display: none;
+        }
+        .swal2-html-container .ranking-table {
+            margin: 20px auto;
+            max-width: 100%;
+        }
+
+        .swal2-html-container .ranking-table table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        .swal2-html-container .ranking-table th, 
+        .swal2-html-container .ranking-table td {
+            padding: 10px;
+            text-align: center;
+            border-bottom: 1px solid #ddd;
+        }
+
+        .swal2-html-container .ranking-table th {
+            background-color: #f8f9fa;
+        }
+
+        .swal2-html-container .ranking-table tr:hover {
+            background-color: #f1f1f1;
+        }
     </style>
 </head>
 <body>
@@ -192,17 +234,16 @@
         <div class="col-12 col-md-3">
             <div class="player-list card">
                 <div class="card-header">
-                    <h5 class="card-title">Players</h5>
+                    <h5 class="card-title">Overall Ranking</h5>
                 </div>
                 <ul class="list-group list-group-flush" id="player-list">
                     <!-- Host item -->
-                    <li class="list-group-item host-item">
+                    <!-- <li class="list-group-item host-item">
                         <span class="player-name">Host: 
-                            <!-- <?= $this->session->userdata('player_name') ?> -->
-                            name <!-- Replace with PHP code to display host's name -->
+
                         </span>
-                        <span class="player-score">N/A</span>
-                    </li>
+                        <span class="player-score"></span>
+                    </li> -->
                     <!-- Player items will be dynamically inserted here -->
                 </ul>
             </div>
@@ -241,47 +282,50 @@
 </div>
 
 <script>
-    // Example player data
-    const players = [
-        { name: "Player 1", score: 10 },
-        { name: "Player 2", score: 20 },
-        { name: "Player 3", score: 15 }
-    ];
-
-    function updatePlayerList(players) {
-        const playerList = document.getElementById("player-list");
-
-        // Clear existing player items except the host
-        while (playerList.children.length > 1) {
-            playerList.removeChild(playerList.lastChild);
+    $(document).ready(function() {
+        function getRoomId() {
+            const urlParams = new URLSearchParams(window.location.search);
+            return urlParams.get('roomId');
         }
 
-        players.forEach(player => {
-            const listItem = document.createElement("li");
-            listItem.className = "list-group-item";
+        let roomId = getRoomId();
 
-            const playerName = document.createElement("span");
-            playerName.className = "player-name";
-            playerName.textContent = player.name;
+        fetchPlayers(roomId);
+        setInterval(() => fetchPlayers(roomId), 2000); // Fetch players every 5 seconds
 
-            const playerScore = document.createElement("span");
-            playerScore.className = "player-score";
-            playerScore.textContent = player.score;
+        function fetchPlayers(roomId) {
+            $.ajax({
+                url: '<?= site_url('main_controller/get_all_ranking') ?>',
+                method: 'POST',
+                data: { roomId: roomId },
+                dataType: 'json',
+                success: function(data) {
+                    console.log("Room ID is: " + roomId);
+                    console.log("Response data:", data);
+                    updatePlayerList(data.players);
+                },
+                error: function(xhr, status, error) {
+                    console.error("Error fetching players:", error);
+                }
+            });
+        }
 
-            listItem.appendChild(playerName);
-            listItem.appendChild(playerScore);
-            playerList.appendChild(listItem);
-        });
-    }
+        function updatePlayerList(players) {
+            const playerList = $('#player-list');
+            // Clear previous player items except for the host
+            playerList.find('li:not(.host-item)').remove();
 
-    // Call this function to update the player list
-    updatePlayerList(players);
+            players.forEach(player => {
+                const listItem = $('<li class="list-group-item"></li>');
+                const playerName = $('<span class="player-name"></span>').text(player.name);
+                const playerScore = $('<span class="player-score"></span>').text(player.score);
+
+                listItem.append(playerName).append(playerScore);
+                playerList.append(listItem);
+            });
+        }
+    });
 </script>
-
-<!-- Bootstrap JS and dependencies -->
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.7.1/jquery.min.js" integrity="sha512-v2CJ7UaYy4JwqLDIrZUI/4hqeoQieOmAZNXBeQyjo21dadnwR+8ZaIJVT8EE2iyI61OV8e6M8PP2/4hpQINQ/g==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
-<script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.5.4/dist/umd/popper.min.js"></script>
-<script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
 
 <!-- WebSocket and AJAX Script -->
 <script>
@@ -390,9 +434,11 @@
             }
         }
 
+        let questionId = null;
         // Function to display a question
         function displayQuestion(question) {
             if (!question) return;
+            questionId = question.id;
 
             // console.log('Question Data:', question); // Debugging line
 
@@ -497,7 +543,7 @@
             }
         }
 
-        function startCountdown(duration) {
+        function startCountdown(duration, questionId, roomId) {
             let timeLeft = duration;
 
             // Retrieve the remaining time from localStorage if it exists
@@ -520,35 +566,123 @@
             // Start the countdown
             const countdownInterval = setInterval(() => {
                 updateCountdown();
-                
+
                 // Save the remaining time to localStorage
-                // localStorage.setItem('countdownTime', timeLeft);
-                // localStorage.clear();
+                localStorage.setItem('countdownTime', timeLeft);
 
                 // Decrease the time left
                 timeLeft--;
-                
+
                 // If time is up
                 if (timeLeft < -1) {
                     clearInterval(countdownInterval);
                     submitAnswerButton.setAttribute('disabled', 'true');
                     showAnswer();
-                    Swal.fire({
-                        title: "Ranking",
-                        text: "Test",
-                        icon: "success",
-                        showConfirmButton: false, // Disable the confirm button
-                        timer: 15000, // The alert will close automatically after 5 seconds (5000 ms)
-                        timerProgressBar: true, // Display a progress bar showing the countdown
-                        allowOutsideClick: false, // Disable closing the alert by clicking outside
-                        allowEscapeKey: false //Disable escape key
-                    })
-                    localStorage.removeItem('countdownTime'); // Clear the stored time
+
+                    // Set a 3-second delay before fetching player data
+                    setTimeout(() => {
+                        // Fetch player data via AJAX
+                        fetchPlayerData(questionId, roomId) // Pass the questionId and roomId
+                            .then(players => {
+                                // Generate the ranking table HTML with fetched players
+                                const rankingTableHtml = generateRankingTable(players);
+
+                                // Show the ranking table in SweetAlert2
+                                Swal.fire({
+                                    title: "Ranking per Question",
+                                    html: rankingTableHtml, // Insert the ranking table here
+                                    icon: "info",
+                                    showConfirmButton: false, // Disable the confirm button
+                                    timer: 10000, // The alert will close automatically after 10 seconds
+                                    timerProgressBar: true, // Display a progress bar showing the countdown
+                                    allowOutsideClick: false, // Disable closing the alert by clicking outside
+                                    allowEscapeKey: false // Disable escape key
+                                });
+
+                                localStorage.removeItem('countdownTime'); // Clear the stored time
+                            })
+                            .catch(error => {
+                                console.error('Error fetching player data:', error);
+                                // Optionally, handle the error or show an error message
+                                Swal.fire({
+                                    title: "Error",
+                                    text: "Failed to fetch player data.",
+                                    icon: "error",
+                                    confirmButtonText: "OK"
+                                });
+                            });
+                    }, 3000); // 3000 milliseconds delay
                 }
+
             }, 1000);
 
             // Initial update of the countdown bar
             updateCountdown();
+        }
+
+        // Function to generate the ranking table HTML
+        function generateRankingTable(players) {
+            let tableHtml = `
+                <div class="ranking-table">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Rank</th>
+                                <th>Name</th>
+                                <th>Score</th>
+                            </tr>
+                        </thead>
+                        <tbody>`;
+
+            // Sort players by score in descending order
+            players.sort((a, b) => b.score - a.score);
+
+            // Generate table rows
+            players.forEach((player, index) => {
+                tableHtml += `
+                    <tr>
+                        <td>${index + 1}</td>
+                        <td>${player.name}</td>
+                        <td>${player.score}</td>
+                    </tr>`;
+            });
+
+            tableHtml += `
+                        </tbody>
+                    </table>
+                </div>`;
+
+            return tableHtml;
+        }
+
+        // AJAX function to fetch player data
+        function fetchPlayerData($question_id = questionId, $room_id = roomId) {
+            console.log('Fetching player data for question ID:', questionId); // Add this line
+            console.log('Fetching player data for Room ID:', roomId);
+            return new Promise((resolve, reject) => {
+                $.ajax({
+                    url: '<?= site_url('main_controller/fetch_players_score_per_q') ?>',
+                    method: 'GET',
+                    data: {
+                        question_id: questionId,
+                        room_id: roomId
+                    },
+                    dataType: 'json',
+                    success: function(response) {
+                        console.log('Raw response:', response);
+                        if (response.status === 'success' && Array.isArray(response.players)) {
+                            resolve(response.players);
+                        } else {
+                            console.error('Invalid response format or no players found:', response);
+                            reject('Failed to fetch player data or invalid response format.');
+                        }
+                    },
+                    error: function(xhr, status, error) {
+                        console.error('AJAX error:', xhr, status, error);
+                        reject('AJAX request failed: ' + error);
+                    }
+                });
+            });
         }
 
         function showAnswer() {
@@ -584,7 +718,7 @@
                     //     location.reload();
                     // }
                 }
-            }, 14000); // Delay to show the correct answer before moving to the next question
+            }, 13000); // Delay to show the correct answer before moving to the next question
         }
 
         

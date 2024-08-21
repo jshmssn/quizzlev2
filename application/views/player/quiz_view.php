@@ -604,7 +604,6 @@
         });
     }
 
-
     function showAnswer() {
         const waitingMessage = document.getElementById('waitingMessage');
         const correctAnswer = document.getElementById('correctAnswer');

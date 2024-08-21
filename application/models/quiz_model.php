@@ -397,6 +397,19 @@ class quiz_model extends CI_Model {
         return $query->result_array();
     }    
 
+    // Fetch all Players with Final Scores
+    public function get_all_players_final_scores($room_id) {
+        $this->db->select('p.name, ps.score');
+        $this->db->from('participant_scores ps');
+        $this->db->join('participants p', 'p.id = ps.participant_id'); // Join the participants table
+        $this->db->where('ps.room_id', $room_id);
+        $this->db->order_by('ps.score', 'DESC');
+        $query = $this->db->get();
+
+        // Return the result as an array
+        return $query->result_array();
+    }
+
     // Fetch a players
     public function get_players() {
         $this->db->select('name');
