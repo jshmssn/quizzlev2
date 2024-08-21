@@ -282,49 +282,50 @@
 </div>
 
 <script>
-    $(document).ready(function() {
-        function getRoomId() {
-            const urlParams = new URLSearchParams(window.location.search);
-            return urlParams.get('roomId');
-        }
+$(document).ready(function() {
+    function getRoomId() {
+        const urlParams = new URLSearchParams(window.location.search);
+        return urlParams.get('roomId');
+    }
 
-        let roomId = getRoomId();
+    let roomId = getRoomId();
 
-        fetchPlayers(roomId);
-        setInterval(() => fetchPlayers(roomId), 2000); // Fetch players every 5 seconds
+    fetchPlayers(roomId);
+    setInterval(() => fetchPlayers(roomId), 5000); // Fetch players every 5 seconds
 
-        function fetchPlayers(roomId) {
-            $.ajax({
-                url: '<?= site_url('main_controller/get_all_ranking') ?>',
-                method: 'POST',
-                data: { roomId: roomId },
-                dataType: 'json',
-                success: function(data) {
-                    console.log("Room ID is: " + roomId);
-                    console.log("Response data:", data);
-                    updatePlayerList(data.players);
-                },
-                error: function(xhr, status, error) {
-                    console.error("Error fetching players:", error);
-                }
-            });
-        }
+    function fetchPlayers(roomId) {
+        $.ajax({
+            url: '<?= site_url('main_controller/get_all_ranking') ?>',
+            method: 'POST',  // Change to POST
+            data: { roomId: roomId },
+            dataType: 'json',
+            success: function(data) {
+                console.log("Room ID is: " + roomId);
+                console.log("Response data:", data);
+                updatePlayerList(data.players);
+            },
+            error: function(xhr, status, error) {
+                console.error("Error fetching players:", error);
+            }
+        });
+    }
 
-        function updatePlayerList(players) {
-            const playerList = $('#player-list');
-            // Clear previous player items except for the host
-            playerList.find('li:not(.host-item)').remove();
+    function updatePlayerList(players) {
+        const playerList = $('#player-list');
+        // Clear previous player items except for the host
+        playerList.find('li:not(.host-item)').remove();
 
-            players.forEach(player => {
-                const listItem = $('<li class="list-group-item"></li>');
-                const playerName = $('<span class="player-name"></span>').text(player.name);
-                const playerScore = $('<span class="player-score"></span>').text(player.score);
+        players.forEach((player, index) => {
+            const listItem = $('<li class="list-group-item"></li>');
+            const playerRank = $('<span class="player-rank"></span>').text(index + 1 + '. '); // Add ranking number
+            const playerName = $('<span class="player-name"></span>').text(player.name);
+            const playerScore = $('<span class="player-score"></span>').text(player.score);
 
-                listItem.append(playerName).append(playerScore);
-                playerList.append(listItem);
-            });
-        }
-    });
+            listItem.append(playerRank).append(playerName).append(playerScore);
+            playerList.append(listItem);
+        });
+    }
+});
 </script>
 
 <!-- WebSocket and AJAX Script -->
@@ -606,9 +607,13 @@
                                 // Optionally, handle the error or show an error message
                                 Swal.fire({
                                     title: "Error",
-                                    text: "Failed to fetch player data.",
+                                    text: "No player data on this question.",
                                     icon: "error",
-                                    confirmButtonText: "OK"
+                                    showConfirmButton: false, // Disable the confirm button
+                                    timer: 10000, // The alert will close automatically after 10 seconds
+                                    timerProgressBar: true, // Display a progress bar showing the countdown
+                                    allowOutsideClick: false, // Disable closing the alert by clicking outside
+                                    allowEscapeKey: false // Disable escape key
                                 });
                             });
                     }, 3000); // 3000 milliseconds delay
@@ -702,17 +707,17 @@
                 } else {
                     // Handle the end of the quiz
                     // console.log('Quiz completed!');
-                    Swal.fire({
-                        title: "Good job!",
-                        text: "The quiz is now done.",
-                        icon: "success",
-                        confirmButtonText: "See overall ranking"
-                    }).then((result) => {
-                        /* Read more about isConfirmed */
-                        if (result.isConfirmed) {
+                    // Swal.fire({
+                    //     title: "Good job!",
+                    //     text: "The quiz is now done.",
+                    //     icon: "success",
+                    //     confirmButtonText: "See overall ranking"
+                    // }).then((result) => {
+                    //     /* Read more about isConfirmed */
+                    //     if (result.isConfirmed) {
                             
-                        }
-                    });
+                    //     }
+                    // });
                     // Refresh the page when OK is clicked
                     // if (confirm('Click OK to debug again')) {
                     //     location.reload();
