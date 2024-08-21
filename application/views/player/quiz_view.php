@@ -534,7 +534,7 @@
 
                             // Show the ranking table in SweetAlert2
                             Swal.fire({
-                                title: "Ranking",
+                                title: "Ranking per Question",
                                 html: rankingTableHtml, // Insert the ranking table here
                                 icon: "info",
                                 showConfirmButton: false, // Disable the confirm button
