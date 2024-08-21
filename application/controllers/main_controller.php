@@ -352,18 +352,19 @@ class main_controller extends CI_Controller {
         echo json_encode($response);
     }
 
-    // Function to fetch players' scores per question
     public function fetch_players_score_per_q() {
         $question_id = $this->input->get('question_id');
-        
-        // Your logic to fetch player data based on question_id
-        // Example result
-        $players = $this->quiz_model->get_player_scores($question_id);
-        
+        $room_id = $this->input->get('room_id');
+    
+        // Log the input parameters
+        log_message('info', "Fetching scores for Question ID: $question_id, Room ID: $room_id");
+    
+        $players = $this->quiz_model->get_player_scores($question_id, $room_id);
+    
         if ($players) {
             $response = [
                 'status' => 'success',
-                'players' => $players // Ensure this is an array
+                'players' => $players
             ];
         } else {
             $response = [
@@ -372,9 +373,8 @@ class main_controller extends CI_Controller {
             ];
         }
     
-        // Return the JSON response
         echo json_encode($response);
-    }    
+    }      
 
     public function fetch_room_id() {
         $roomPin = $this->input->post('roomPin');

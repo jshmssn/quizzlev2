@@ -227,17 +227,6 @@ class quiz_model extends CI_Model {
         return $totalScore;
     }  
 
-    public function get_question_score($userId, $roomId, $questionId) {
-        $this->db->select('score');
-        $this->db->from('participant_question_scores');
-        $this->db->where('user_id', $userId);
-        $this->db->where('room_id', $roomId);
-        $this->db->where('question_id', $questionId);
-        $query = $this->db->get();
-        $result = $query->row();
-        return $result ? $result->score : 0;
-    }
-
     /*
     public function get_user_score($participantId, $roomId) {
         // Log the parameters for debugging
@@ -391,21 +380,22 @@ class quiz_model extends CI_Model {
         return $query->result();
     }
 
-     // Function to get player scores for a specific question
-     public function get_player_scores($question_id) {
+    // Function to get player scores for a specific question
+    public function get_player_scores($question_id, $room_id) {
         // Select the player's name and score
         $this->db->select('p.name, pqs.score');
         $this->db->from('participant_question_scores pqs');
-        $this->db->join('participants p', 'p.id = pqs.id'); // Join the players table with players_question_score
+        $this->db->join('participants p', 'p.id = pqs.participant_id'); // Join the participants table
+        $this->db->where('pqs.room_id', $room_id);
         $this->db->where('pqs.question_id', $question_id); // Filter by question_id
         $this->db->order_by('pqs.score', 'DESC'); // Order by score in descending order
         
         // Execute the query
         $query = $this->db->get();
-
+    
         // Return the result as an associative array
         return $query->result_array();
-    }
+    }    
 
     // Fetch a players
     public function get_players() {

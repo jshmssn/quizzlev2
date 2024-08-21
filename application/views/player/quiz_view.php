@@ -344,11 +344,13 @@
 
     let questionStartTime = null; // Add this variable to track the question start time
     let questionId = null;
+
     function displayQuestion(question) {
         if (!question) return;
 
         questionStartTime = Date.now(); // Record the time when the question is displayed
         questionId = question.id;
+        
         // Existing code for displaying the question
         questionTextElement.textContent = question.question_text || 'Loading question...';
         questionNumberElement.textContent = `Question ${currentQuestionIndex + 1} out of ${questions.length}`;
@@ -356,7 +358,6 @@
         loadImage(question.id);
         fetchAnswers(question.id);
         fetchCorrectAnswers(question.id);
-        fetchPlayerData(questionId);
         startCountdown(question.time);
 
         submitAnswerButton.removeAttribute('disabled');
@@ -461,7 +462,7 @@
         }
     }
 
-    function startCountdown(duration, questionId) {
+    function startCountdown(duration, questionId, roomId) {
         let timeLeft = duration;
 
         // Retrieve the remaining time from localStorage if it exists
@@ -497,37 +498,41 @@
                 submitAnswerButton.setAttribute('disabled', 'true');
                 showAnswer();
 
-                // Fetch player data via AJAX
-                fetchPlayerData(questionId) // Pass the questionId if needed
-                    .then(players => {
-                        // Generate the ranking table HTML with fetched players
-                        const rankingTableHtml = generateRankingTable(players);
+                // Set a 3-second delay before fetching player data
+                setTimeout(() => {
+                    // Fetch player data via AJAX
+                    fetchPlayerData(questionId, roomId) // Pass the questionId and roomId
+                        .then(players => {
+                            // Generate the ranking table HTML with fetched players
+                            const rankingTableHtml = generateRankingTable(players);
 
-                        // Show the ranking table in SweetAlert2
-                        Swal.fire({
-                            title: "Ranking",
-                            html: rankingTableHtml, // Insert the ranking table here
-                            icon: "info",
-                            showConfirmButton: false, // Disable the confirm button
-                            timer: 10000, // The alert will close automatically after 15 seconds
-                            timerProgressBar: true, // Display a progress bar showing the countdown
-                            allowOutsideClick: false, // Disable closing the alert by clicking outside
-                            allowEscapeKey: false // Disable escape key
-                        });
+                            // Show the ranking table in SweetAlert2
+                            Swal.fire({
+                                title: "Ranking",
+                                html: rankingTableHtml, // Insert the ranking table here
+                                icon: "info",
+                                showConfirmButton: false, // Disable the confirm button
+                                timer: 10000, // The alert will close automatically after 10 seconds
+                                timerProgressBar: true, // Display a progress bar showing the countdown
+                                allowOutsideClick: false, // Disable closing the alert by clicking outside
+                                allowEscapeKey: false // Disable escape key
+                            });
 
-                        localStorage.removeItem('countdownTime'); // Clear the stored time
-                    })
-                    .catch(error => {
-                        console.error('Error fetching player data:', error);
-                        // Optionally, handle the error or show an error message
-                        Swal.fire({
-                            title: "Error",
-                            text: "Failed to fetch player data.",
-                            icon: "error",
-                            confirmButtonText: "OK"
+                            localStorage.removeItem('countdownTime'); // Clear the stored time
+                        })
+                        .catch(error => {
+                            console.error('Error fetching player data:', error);
+                            // Optionally, handle the error or show an error message
+                            Swal.fire({
+                                title: "Error",
+                                text: "Failed to fetch player data.",
+                                icon: "error",
+                                confirmButtonText: "OK"
+                            });
                         });
-                    });
+                }, 3000); // 3000 milliseconds delay
             }
+
         }, 1000);
 
         // Initial update of the countdown bar
@@ -570,13 +575,17 @@
     }
 
     // AJAX function to fetch player data
-    function fetchPlayerData() {
+    function fetchPlayerData($question_id = questionId, $room_id = roomId) {
         console.log('Fetching player data for question ID:', questionId); // Add this line
+        console.log('Fetching player data for Room ID:', roomId);
         return new Promise((resolve, reject) => {
             $.ajax({
                 url: '<?= site_url('main_controller/fetch_players_score_per_q') ?>',
                 method: 'GET',
-                data: { question_id: questionId },
+                data: {
+                    question_id: questionId,
+                    room_id: roomId
+                },
                 dataType: 'json',
                 success: function(response) {
                     console.log('Raw response:', response);
@@ -594,6 +603,7 @@
             });
         });
     }
+
 
     function showAnswer() {
         const waitingMessage = document.getElementById('waitingMessage');
@@ -639,7 +649,7 @@
         
                 // Refresh the page when OK is clicked
             }
-        }, 14000); // Delay to show the correct answer before moving to the next question
+        }, 13000); // Delay to show the correct answer before moving to the next question
     }
 
     function loadImage(questId) {
