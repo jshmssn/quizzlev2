@@ -23,6 +23,10 @@ class main_controller extends CI_Controller {
         $this->load->view('../views/create/quiz_creator');
     }
 
+    public function overall_ranking() {
+        $this->load->view('../views/ranking/rank');
+    }
+
     public function submit() {
         $items = array('player_name', 'room_pin');
         $this->session->unset_userdata($items);
@@ -173,55 +177,6 @@ class main_controller extends CI_Controller {
         echo json_encode(['status' => 'success', 'score' => $score]);
     }
     
-
-    /*
-    public function submit_answer() {           
-        $roomId = $this->input->post('room_id');
-        $questionId = $this->input->post('question_id');
-        $answerId = $this->input->post('answer_id'); // Could be null for fill-in-the-blank
-        $answerText = $this->input->post('answer_text'); // For fill-in-the-blank
-        $responseTime = $this->input->post('response_time');
-        
-        $player_name = $this->session->userdata('player_name');
-        $room_pin = $this->session->userdata('room_pin');
-        
-        // Retrieve participant data
-        $participantData = $this->quiz_model->getparticipantdata($player_name, $room_pin);
-        
-        if (isset($participantData['id'])) {
-            $participantId = $participantData['id'];
-        } else {
-            echo json_encode(['status' => 'error', 'message' => 'Participant ID is missing.']);
-            return;
-        }
-        
-        // Determine if the question is a fill-in-the-blank or multiple-choice
-        $isFill = $this->quiz_model->get_is_fill($questionId); // Add this method to get the isFill value
-        
-        if ($isFill === 0) {
-            // Save participant's multiple-choice answer
-            $this->quiz_model->save_participant_answer($participantId, $roomId, $questionId, $answerId, $responseTime);
-        } elseif ($isFill === 1) {
-            // Save participant's fill-in-the-blank answer
-            $this->quiz_model->save_participant_answer_text($participantId, $roomId, $questionId, $answerText, $responseTime);
-        } else {
-            echo json_encode(['status' => 'error', 'message' => 'Invalid question type.']);
-            return;
-        }
-        
-        // Calculate the score based on the answer and response time
-        $score = $this->quiz_model->calculate_score($participantId, $roomId);
-        
-        // Save the score
-        $this->quiz_model->save_score($participantId, $roomId, $score);
-        
-        // Optionally, save question-specific scores if needed
-        $this->quiz_model->save_question_score($participantId, $roomId, $questionId, $score);
-        
-        echo json_encode(['status' => 'success', 'score' => $score]);
-    }
-    */
-    
         
     public function hostgame() {
         $roomPin = $this->session->userdata('room_pin');
@@ -348,21 +303,31 @@ class main_controller extends CI_Controller {
         // Get the room pin from session data
         $roomPin = $this->session->userdata('room_pin');
         $roomId = $this->session->userdata('roomId');
-    
+        
         // Check if the room pin exists in the session
         if ($roomPin && $roomId) {
             // Update the room's validity status
             $this->quiz_model->invalidate_room($roomId);
             $this->quiz_model->exit_all_participants($roomPin);
             $this->quiz_model->delete_room_questions($roomId);
+            
+            // Define the path to the directory
+            $dirPath = './assets/images/quiz/Room-' . $roomId;
     
+            // Attempt to delete the directory and its contents
+            if ($this->_delete_directory($dirPath)) {
+                // Set a flash message for success
+                $this->session->set_flashdata('status', 'success');
+                $this->session->set_flashdata('msg', 'You have left the room successfully and the room data has been deleted.');
+            } else {
+                // Set a flash message for partial success
+                $this->session->set_flashdata('status', 'warning');
+                $this->session->set_flashdata('msg', 'Room data has been deleted, but there was an issue removing the directory.');
+            }
+            
             // Unset the roomPin session data
             $items = array('player_name', 'room_pin');
             $this->session->unset_userdata($items);
-    
-            // Set a flash message for success
-            $this->session->set_flashdata('status', 'success');
-            $this->session->set_flashdata('msg', 'You have left the room successfully.');
         } else {
             // Set a flash message for error
             $this->session->set_flashdata('status', 'error');
@@ -424,7 +389,6 @@ class main_controller extends CI_Controller {
         // Return the response in JSON format
         echo json_encode($response);
     }
-  
 
     public function fetch_room_id() {
         $roomPin = $this->input->post('roomPin');
