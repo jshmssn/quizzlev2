@@ -56,21 +56,18 @@
         .remove-btn {
             margin-top: 10px;
         }
-
         #quiz-container {
             display: none;
-         }
+        }
     </style>
 </head>
 <body>
     <div id="container">
-    <div id="container">
-    <div id="body">
-        <h1 class="mb-4">Create your quiz</h1>
-        <form id="quiz-form" method="POST" action="<?php echo site_url('main_controller/submit'); ?>" enctype="multipart/form-data">
-            <div id="quiz-container">
-                <!-- Initially empty, questions will be added here dynamically 
-                <div class="quiz-set mb-5" data-index="1">
+        <div id="body">
+            <h1 class="mb-4">Create your quiz</h1>
+            <form id="quiz-form" method="POST" action="<?php echo site_url('main_controller/submit'); ?>" enctype="multipart/form-data">
+                <div id="quiz-container" id="quiz-def">
+                    <div class="quiz-set mb-5" data-index="1">
                         <div class="mb-3">
                             <label for="question-1" class="form-label">Question 1</label>
                             <input type="text" id="question-1" name="questions[1][text]" class="form-control question" placeholder="Enter question" required>
@@ -106,15 +103,13 @@
                             </div>
                         </div>
                     </div>
-                 -->
-            </div>
-            <button id="add-quiz" type="button" class="btn btn-primary">Add Multiple Choice</button>
-            <button id="add-image-quiz" type="button" class="btn btn-primary">Add Fill in the Blank</button>
-            <button id="submit-button" type="submit" class="btn btn-success">Submit</button>
-            <button id="home-button" class="btn btn-danger">Cancel</button>
-        </form>
-    </div>
-</div>
+                </div>
+                <button id="add-quiz" type="button" class="btn btn-primary">Add Multiple Choice</button>
+                <button id="add-image-quiz" type="button" class="btn btn-primary">Add fill in the Blank</button>
+                <button id="submit-button" type="submit" class="btn btn-success">Submit</button>
+                <button id="home-button" class="btn btn-danger">Cancel</button>
+            </form>
+        </div>
     </div>
     <button id="scroll-to-top" class="scroll-to-top">↑</button>
 
@@ -158,19 +153,19 @@
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.min.js" integrity="sha384-BBtl+eGJRgqQAUMxJ7pMwbEyER4l1g+O15P+16Ep7Q9Q+zqX6gSbd85u4mG4QzX+" crossorigin="anonymous"></script>
     <script>
-    // Initial quiz index
-    let quizIndex = 1;
+        let quizIndex = 1;
+        const colors = ['#f5f5f5', '#f5f5f5', '#f5f5f5', '#f5f5f5', '#f5f5f5'];
 
-    // Button click event listeners
-    document.getElementById('add-quiz').addEventListener('click', function() {
-        document.getElementById('quiz-container').style.display = 'block'; // Show quiz container
+        document.getElementById('add-quiz').addEventListener('click', function() {
         quizIndex++;
         const quizContainer = document.getElementById('quiz-container');
+
+        // Make the quiz container visible
+        quizContainer.style.display = 'block';
 
         const newQuizSet = document.createElement('div');
         newQuizSet.className = 'quiz-set mb-5';
         newQuizSet.dataset.index = quizIndex;
-
         newQuizSet.innerHTML = `
             <div class="mb-3">
                 <label for="question-${quizIndex}" class="form-label">Question ${quizIndex}</label>
@@ -206,88 +201,84 @@
                     <input type="radio" name="questions[${quizIndex}][correct]" value="3" required> Correct
                 </div>
             </div>
-            <button type="button" class="btn btn-danger remove-btn" onclick="removeQuizSet(this)">Remove</button>
         `;
         quizContainer.appendChild(newQuizSet);
     });
 
-    document.getElementById('add-image-quiz').addEventListener('click', function() {
-        document.getElementById('quiz-container').style.display = 'block'; // Show quiz container
-        quizIndex++;
-        const quizContainer = document.getElementById('quiz-container');
+        // this is for fill in blanks, 
+        document.getElementById('add-image-quiz').addEventListener('click', function() {
+            quizIndex++;
+            const quizContainer = document.getElementById('quiz-container');
+            quizContainer.style.display = 'block';
+            const newQuizSet = document.createElement('div');
+            newQuizSet.className = 'quiz-set mb-5';
+            newQuizSet.dataset.index = quizIndex;
 
-        const newQuizSet = document.createElement('div');
-        newQuizSet.className = 'quiz-set mb-5';
-        newQuizSet.dataset.index = quizIndex;
+            newQuizSet.innerHTML = `
+                <div class="mb-3">
+                    <label for="question-${quizIndex}" class="form-label">Question ${quizIndex}</label>
+                    <input type="text" id="question-${quizIndex}" name="questions[${quizIndex}][text]" class="form-control question" placeholder="Enter question" required>
+                </div>
+                <div class="mb-3">
+                    <label for="time-${quizIndex}" class="form-label">Time (in seconds)</label>
+                    <input type="number" id="time-${quizIndex}" name="questions[${quizIndex}][time]" class="form-control" placeholder="Enter time" required>
+                </div>
+                <div class="mb-3">
+                    <label for="image-${quizIndex}" class="form-label">Upload Image</label>
+                    <input type="file" id="image-${quizIndex}" name="questions[${quizIndex}][image]" class="form-control" accept="image/*">
+                    <input type="text" hidden name="questions[${quizIndex}][fillable]" value="1">
+                </div>
+                <div class="mb-3">
+                    <label for="fill-answer-${quizIndex}" class="form-label">Fill in the Blank Answer</label>
+                    <input type="text" id="fill-answer-${quizIndex}" name="questions[${quizIndex}][answers][0]" class="form-control" placeholder="Enter correct answer" required>
+                    <input type="radio" hidden name="questions[${quizIndex}][correct]" value="0" checked>
+                </div>
+                <button type="button" class="btn btn-danger remove-btn" onclick="removeQuizSet(this)">Remove</button>
+            `;
+            quizContainer.appendChild(newQuizSet);
+        });
 
-        newQuizSet.innerHTML = `
-            <div class="mb-3">
-                <label for="question-${quizIndex}" class="form-label">Question ${quizIndex}</label>
-                <input type="text" id="question-${quizIndex}" name="questions[${quizIndex}][text]" class="form-control question" placeholder="Enter question" required>
-            </div>
-            <div class="mb-3">
-                <label for="time-${quizIndex}" class="form-label">Time (in seconds)</label>
-                <input type="number" id="time-${quizIndex}" name="questions[${quizIndex}][time]" class="form-control" placeholder="Enter time" required>
-            </div>
-            <div class="mb-3">
-                <label for="image-${quizIndex}" class="form-label">Upload Image</label>
-                <input type="file" id="image-${quizIndex}" name="questions[${quizIndex}][image]" class="form-control" accept="image/*">
-                <input type="text" hidden name="questions[${quizIndex}][fillable]" value="1">
-            </div>
-            <div class="mb-3">
-                <label for="fill-answer-${quizIndex}" class="form-label">Fill in the Blank Answer</label>
-                <input type="text" id="fill-answer-${quizIndex}" name="questions[${quizIndex}][answers][0]" class="form-control" placeholder="Enter correct answer" required>
-                <input type="radio" hidden name="questions[${quizIndex}][correct]" value="0" checked>
-            </div>
-            <button type="button" class="btn btn-danger remove-btn" onclick="removeQuizSet(this)">Remove</button>
-        `;
-        quizContainer.appendChild(newQuizSet);
-    });
-
-    function removeQuizSet(button) {
-        quizIndex--;
-        button.closest('.quiz-set').remove();
-        if (quizIndex === 0) {
-            document.getElementById('quiz-container').style.display = 'none'; // Hide quiz container if no quiz sets
+        function removeQuizSet(button) {
+            quizIndex--;
+            button.closest('.quiz-set').remove();
         }
-    }
 
-    $(document).ready(function(){
-        $('#confirm-submit').click(function(){
-            $('#quiz-form').submit();
+        $(document).ready(function(){
+            $('#confirm-submit').click(function(){
+                $('#quiz-form').submit();
+            });
+            $('#home-button').on('click', function(e) {
+                e.preventDefault();
+                $('#confirmModal').modal('show');
+            });
         });
-        $('#home-button').on('click', function(e) {
-            e.preventDefault();
-            $('#confirmModal').modal('show');
-        });
-    });
 
-    document.getElementById('submit-button').addEventListener('click', function(event) {
+        document.getElementById('submit-button').addEventListener('click', function(event) {
         event.preventDefault(); // Prevent the form from submitting immediately
         var submitModal = new bootstrap.Modal(document.getElementById('submitModal'));
         submitModal.show();
     });
 
     document.getElementById('confirm-submit').addEventListener('click', function() {
-        document.getElementById('quiz-form').submit(); // Submit the form programmatically
-    });
+    document.getElementById('quiz-form').submit(); // Submit the form programmatically
+});
 
-    window.addEventListener('scroll', function() {
-        const scrollTopButton = document.getElementById('scroll-to-top');
-        if (window.pageYOffset > 200) {
-            scrollTopButton.style.display = 'block';
-        } else {
-            scrollTopButton.style.display = 'none';
-        }
-    });
 
-    document.getElementById('scroll-to-top').addEventListener('click', function() {
-        window.scrollTo({
-            top: 0,
-            behavior: 'smooth'
+        window.addEventListener('scroll', function() {
+            const scrollTopButton = document.getElementById('scroll-to-top');
+            if (window.pageYOffset > 200) {
+                scrollTopButton.style.display = 'block';
+            } else {
+                scrollTopButton.style.display = 'none';
+            }
         });
-    });
-</script>
 
+        document.getElementById('scroll-to-top').addEventListener('click', function() {
+            window.scrollTo({
+                top: 0,
+                behavior: 'smooth'
+            });
+        });
+    </script>
 </body>
 </html>

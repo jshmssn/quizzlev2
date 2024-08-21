@@ -138,7 +138,8 @@ class main_controller extends CI_Controller {
         $questionId = $this->input->post('question_id');
         $answerId = $this->input->post('answer_id');
         $responseTime = $this->input->post('response_time'); // Retrieve the time taken from the request
-        
+        $answerText = $this->input->post('answer_text'); // For fill-in-the-blank answers
+    
         $player_name = $this->session->userdata('player_name');
         $room_pin = $this->session->userdata('room_pin');
         
@@ -152,8 +153,17 @@ class main_controller extends CI_Controller {
             return;
         }
         
+        // Check if the question is fill-in-the-blank
+        $isFill = $this->quiz_model->is_fill_in_the_blank($questionId);
+        
         // Save participant's answer
-        $this->quiz_model->save_participant_answer($participantId, $roomId, $questionId, $answerId, $responseTime);
+        if ($isFill) {
+            // Save fill-in-the-blank answer
+            $this->quiz_model->save_participant_answer($participantId, $roomId, $questionId, null, $answerText, $responseTime);
+        } else {
+            // Save multiple-choice answer
+            $this->quiz_model->save_participant_answer($participantId, $roomId, $questionId, $answerId, $answerText, $responseTime);
+        }
         
         // Calculate the score based on the answer and response time
         $score = $this->quiz_model->calculate_score($participantId, $roomId);
@@ -167,16 +177,6 @@ class main_controller extends CI_Controller {
         echo json_encode(['status' => 'success', 'score' => $score]);
     }
     
-    public function get_all_ranking() {
-        $roomId = $this->input->post('roomId');
-        
-        $players = $this->quiz_model->get_all_players_final_scores($roomId); // Get players from the model
-
-        // Return the response as JSON
-        $this->output
-            ->set_content_type('application/json')
-            ->set_output(json_encode(['players' => $players])); // Format the response
-    }
         
     public function hostgame() {
         $roomPin = $this->session->userdata('room_pin');
@@ -187,6 +187,30 @@ class main_controller extends CI_Controller {
         $this->load->view('host/host', $data);
     }
     
+    public function fetch_players_score_per_q() {
+        $question_id = $this->input->get('question_id');
+        $room_id = $this->input->get('room_id');
+    
+        // Log the input parameters
+        log_message('info', "Fetching scores for Question ID: $question_id, Room ID: $room_id");
+    
+        $players = $this->quiz_model->get_player_scores($question_id, $room_id);
+    
+        if ($players) {
+            $response = [
+                'status' => 'success',
+                'players' => $players
+            ];
+        } else {
+            $response = [
+                'status' => 'error',
+                'message' => 'No players found.'
+            ];
+        }
+    
+        echo json_encode($response);
+    }  
+
     public function get_players() {
         $roomPin = $this->session->userdata('room_pin');
     
@@ -365,30 +389,6 @@ class main_controller extends CI_Controller {
         // Return the response in JSON format
         echo json_encode($response);
     }
-
-    public function fetch_players_score_per_q() {
-        $question_id = $this->input->get('question_id');
-        $room_id = $this->input->get('room_id');
-    
-        // Log the input parameters
-        log_message('info', "Fetching scores for Question ID: $question_id, Room ID: $room_id");
-    
-        $players = $this->quiz_model->get_player_scores($question_id, $room_id);
-    
-        if ($players) {
-            $response = [
-                'status' => 'success',
-                'players' => $players
-            ];
-        } else {
-            $response = [
-                'status' => 'error',
-                'message' => 'No players found.'
-            ];
-        }
-    
-        echo json_encode($response);
-    }      
 
     public function fetch_room_id() {
         $roomPin = $this->input->post('roomPin');

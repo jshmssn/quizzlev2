@@ -7,6 +7,23 @@ class quiz_model extends CI_Model {
         $this->load->database();
     }
 
+    // Function to get player scores for a specific question
+    public function get_player_scores($question_id, $room_id) {
+        // Select the player's name and score
+        $this->db->select('p.name, pqs.score');
+        $this->db->from('participant_question_scores pqs');
+        $this->db->join('participants p', 'p.id = pqs.participant_id'); // Join the participants table
+        $this->db->where('pqs.room_id', $room_id);
+        $this->db->where('pqs.question_id', $question_id); // Filter by question_id
+        $this->db->order_by('pqs.score', 'DESC'); // Order by score in descending order
+        
+        // Execute the query
+        $query = $this->db->get();
+    
+        // Return the result as an associative array
+        return $query->result_array();
+    }    
+    
     public function save_question($questionText, $answers, $correctAnswerIndex, $roomId, $time, $imagePath, $isFill) {
         // Insert the question
         $data = array(
@@ -125,41 +142,50 @@ class quiz_model extends CI_Model {
 
 */
 
-    public function save_participant_answer($userId, $roomId, $questionId, $answerId, $responseTime) {
-        // Fetch the correct answer for the question
-        $this->db->select('id');
-        $this->db->from('answers');
-        $this->db->where('question_id', $questionId);
-        $this->db->where('is_correct', 1);
-        $correctAnswer = $this->db->get()->row();
-    
-        $isCorrect = 0;
-        if ($correctAnswer && $answerId == $correctAnswer->id) {
-            $isCorrect = 1;
+    public function is_fill_in_the_blank($questionId) {
+        // Query to check if the question is a fill-in-the-blank type
+        $this->db->select('isFill');
+        $this->db->from('questions');
+        $this->db->where('id', $questionId);
+        $query = $this->db->get();
+        
+        // Check if the question exists and retrieve the isFill value
+        if ($query->num_rows() > 0) {
+            $row = $query->row();
+            return $row->isFill == 1; // Return TRUE if isFill is 1, otherwise FALSE
         }
-    
-        // Save the participant's answer with time_taken
+        
+        return FALSE; // Return FALSE if the question does not exist
+    }
+
+    public function save_participant_answer($participantId, $roomId, $questionId, $answerId, $answerText, $responseTime) {
+        // Check if the answer is correct
+        $isCorrect = $this->is_correct_answer($questionId, $answerId, $answerText);
+        
+        // Save the participant's answer with response time
         $data = [
-            'user_id' => $userId,
+            'user_id' => $participantId,
             'room_id' => $roomId,
             'question_id' => $questionId,
             'answer_id' => $answerId,
-            'is_correct' => $isCorrect,
-            'response_time' => $responseTime, 
+            'answer_text' => $answerText,
+            'is_correct' => $isCorrect ? 1 : 0,
+            'response_time' => $responseTime,
             'created_at' => date('Y-m-d H:i:s') // Optional: track when the answer was saved
         ];
-    
+        
         $result = $this->db->insert('participant_answers', $data);
         if (!$result) {
             $error = $this->db->error();
             echo json_encode(['status' => 'error', 'message' => 'Failed to save answer: ' . $error['message']]);
             return;
         }
-    
+        
         // Return success response if needed
         echo json_encode(['status' => 'success', 'message' => 'Answer saved successfully']);
     }
-
+    
+    
     public function calculate_score($participantId, $roomId) {
         // Fetch all answers submitted by the participant for this room
         $this->db->select('a.question_id, a.answer_id, a.response_time, a.is_correct, q.time');
@@ -226,6 +252,17 @@ class quiz_model extends CI_Model {
         
         return $totalScore;
     }  
+
+    public function get_question_score($userId, $roomId, $questionId) {
+        $this->db->select('score');
+        $this->db->from('participant_question_scores');
+        $this->db->where('user_id', $userId);
+        $this->db->where('room_id', $roomId);
+        $this->db->where('question_id', $questionId);
+        $query = $this->db->get();
+        $result = $query->row();
+        return $result ? $result->score : 0;
+    }
 
     /*
     public function get_user_score($participantId, $roomId) {
@@ -380,23 +417,6 @@ class quiz_model extends CI_Model {
         return $query->result();
     }
 
-    // Function to get player scores for a specific question
-    public function get_player_scores($question_id, $room_id) {
-        // Select the player's name and score
-        $this->db->select('p.name, pqs.score');
-        $this->db->from('participant_question_scores pqs');
-        $this->db->join('participants p', 'p.id = pqs.participant_id'); // Join the participants table
-        $this->db->where('pqs.room_id', $room_id);
-        $this->db->where('pqs.question_id', $question_id); // Filter by question_id
-        $this->db->order_by('pqs.score', 'DESC'); // Order by score in descending order
-        
-        // Execute the query
-        $query = $this->db->get();
-    
-        // Return the result as an associative array
-        return $query->result_array();
-    }    
-
     // Fetch all Players with Final Scores
     public function get_all_players_final_scores($room_id) {
         $this->db->select('p.name, ps.score');
@@ -449,13 +469,42 @@ class quiz_model extends CI_Model {
         return $query->result_array();
     }    
 
-    public function is_correct_answer($questionId, $answerId) {
-        $this->db->where('question_id', $questionId);
-        $this->db->where('id', $answerId);
-        $this->db->where('is_correct', 1);
-        $query = $this->db->get('answers');
+    public function is_correct_answer($questionId, $answerId = null, $answerText = null) {
+        // Check if the question is a fill-in-the-blank type
+        $this->db->select('isFill');
+        $this->db->from('questions');
+        $this->db->where('id', $questionId);
+        $query = $this->db->get();
         
-        return $query->num_rows() > 0;
+        if ($query->num_rows() == 0) {
+            return false; // Question not found
+        }
+        
+        $question = $query->row();
+        
+        if ($question->isFill == 1) {
+            // Handle fill-in-the-blank question
+            $this->db->select('answer_text');
+            $this->db->from('answers');
+            $this->db->where('question_id', $questionId);
+            $this->db->where('is_correct', 1);
+            $query = $this->db->get();
+            
+            if ($query->num_rows() > 0) {
+                $correctAnswer = $query->row();
+                return strtolower(trim($answerText)) === strtolower(trim($correctAnswer->answer_text));
+            }
+            
+            return false; // No correct answer found
+        } else {
+            // Handle multiple-choice question
+            $this->db->where('question_id', $questionId);
+            $this->db->where('id', $answerId);
+            $this->db->where('is_correct', 1);
+            $query = $this->db->get('answers');
+            
+            return $query->num_rows() > 0;
+        }
     }
     
     public function get_correct_answers($question_id) {

@@ -373,28 +373,55 @@
         }
     }
     
-    function handleFillInTheBlankAnswer(answerText, questionId) {
-        const waitingMessage = document.getElementById('waitingMessage');
+    function handleFillInTheBlankAnswer() {
+    const answerInput = document.getElementById('answer-input');
+    const submitButton = document.getElementById('submit-answer');
+    const waitingMessage = document.getElementById('waitingMessage');
+
+    submitButton.addEventListener('click', function() {
+        // Get the answer from the input field
+        const answerText = answerInput.value.trim();
+        
+        if (answerText === '') {
+            alert('Please enter an answer.');
+            return;
+        }
+
+        // Disable the input and button
+        answerInput.disabled = true;
+        submitButton.disabled = true;
         waitingMessage.removeAttribute('hidden');
         waitingMessage.style.display = 'block';
 
-        if (isSocketOpen) {
-            const data = {
-                type: 'answer_selected',
-                answerText: answerText,
-                questionId: questionId,
-                roomId: roomId
-            };
-            socket.send(JSON.stringify(data));
-            console.log('Selected answer data sent via WebSocket:', data);
-        } else {
-            console.error('Socket connection is not open.');
-        }
+        const responseTimeMs = Date.now() - questionStartTime; // Response time in milliseconds
+        const responseTimeSec = (responseTimeMs / 1000).toFixed(2); // Convert to seconds and round to 2 decimal places
 
-        answerInput.value = '';
-        fillInTheBlankContainer.setAttribute('hidden', 'true');
-        waitingMessage.style.display = 'block';
-    }
+        // Submit answer and calculate score
+        $.ajax({
+            url: '<?= site_url('main_controller/submit_answer') ?>',
+            type: 'POST',
+            data: {
+                room_id: roomId,
+                question_id: questionId,
+                answer_text: answerText,
+                response_time: responseTimeSec // Include response time in seconds in the request
+            },
+            success: function(response) {
+                const data = JSON.parse(response);
+                if (data.status === 'success') {
+                    // Display the score
+                    // displayScores(data.score);
+                    // Proceed to the next question or end the quiz
+                    // ...
+                }
+            },
+            error: function() {
+                alert('An error occurred while submitting your answer.');
+            }
+        });
+    });
+}
+
 
     async function fetchAnswers(questionId) {
         try {
@@ -535,6 +562,7 @@
                         }); 
                 }, 3000);// 3000 milliseconds delay
             }
+
         }, 1000);
 
         // Initial update of the countdown bar
@@ -668,6 +696,9 @@
         });
     }
 
+
+    
+
     function handleAnswerSelection(button, answerId, questionId) {
     const answerButtons = document.querySelectorAll('.btn.answer-btn');
     const waitingMessage = document.getElementById('waitingMessage');
@@ -708,6 +739,59 @@
 }
 
 
+/*
+function handleAnswerSelection(button, answerId, questionId, isFill) {
+    const answerButtons = document.querySelectorAll('.btn.answer-btn');
+    const waitingMessage = document.getElementById('waitingMessage');
+    const fillInAnswerInput = document.getElementById('fillInAnswerInput'); // Assuming you have an input for fill-in-the-blank answers
+
+    answerButtons.forEach(btn => {
+        btn.classList.add('disabled');
+        btn.disabled = true;
+        waitingMessage.removeAttribute('hidden');
+        waitingMessage.style.display = 'block';
+    });
+
+    button.classList.remove('disabled');
+    button.classList.add('selected');
+
+    const responseTimeMs = Date.now() - questionStartTime; // Response time in milliseconds
+    const responseTimeSec = (responseTimeMs / 1000).toFixed(2); // Convert to seconds and round to 2 decimal places
+
+    // Prepare data for the AJAX request
+    let data = {
+        room_id: roomId,
+        question_id: questionId,
+        response_time: responseTimeSec // Include response time in seconds in the request
+    };
+
+    if (isFill) {
+        // Handle fill-in-the-blank answers
+        const fillInAnswer = fillInAnswerInput.value.trim(); // Get the fill-in-the-blank answer
+        data.answer_text = fillInAnswer; // Include the fill-in-the-blank answer in the request
+    } else {
+        // Handle multiple-choice answers
+        data.answer_id = answerId; // Include the selected answer ID in the request
+    }
+
+    // Submit answer and calculate score
+    $.ajax({
+        url: '<?= site_url('main_controller/submit_answer') ?>',
+        type: 'POST',
+        data: data,
+        success: function(response) {
+            const data = JSON.parse(response);
+            if (data.status === 'success') {
+                // Display the score
+                // displayScores(data.score);
+                // Proceed to the next question or end the quiz
+                // ...
+            }
+        }
+    });
+}
+
+*/
     speakButton.addEventListener('click', () => {
         const questionText = questionTextElement.textContent;
         const speech = new SpeechSynthesisUtterance(questionText);
