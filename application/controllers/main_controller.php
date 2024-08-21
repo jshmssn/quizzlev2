@@ -134,6 +134,53 @@ class main_controller extends CI_Controller {
         $questionId = $this->input->post('question_id');
         $answerId = $this->input->post('answer_id');
         $responseTime = $this->input->post('response_time'); // Retrieve the time taken from the request
+        $answerText = $this->input->post('answer_text'); // For fill-in-the-blank answers
+    
+        $player_name = $this->session->userdata('player_name');
+        $room_pin = $this->session->userdata('room_pin');
+        
+        // Retrieve participant data
+        $participantData = $this->quiz_model->getparticipantdata($player_name, $room_pin);
+        
+        if (isset($participantData['id'])) {
+            $participantId = $participantData['id'];
+        } else {
+            echo json_encode(['status' => 'error', 'message' => 'Participant ID is missing.']);
+            return;
+        }
+        
+        // Check if the question is fill-in-the-blank
+        $isFill = $this->quiz_model->is_fill_in_the_blank($questionId);
+        
+        // Save participant's answer
+        if ($isFill) {
+            // Save fill-in-the-blank answer
+            $this->quiz_model->save_participant_answer($participantId, $roomId, $questionId, null, $answerText, $responseTime);
+        } else {
+            // Save multiple-choice answer
+            $this->quiz_model->save_participant_answer($participantId, $roomId, $questionId, $answerId, $answerText, $responseTime);
+        }
+        
+        // Calculate the score based on the answer and response time
+        $score = $this->quiz_model->calculate_score($participantId, $roomId);
+        
+        // Save the score
+        $this->quiz_model->save_score($participantId, $roomId, $score);
+        
+        // Optionally, save question-specific scores if needed
+        $this->quiz_model->save_question_score($participantId, $roomId, $questionId, $score);
+        
+        echo json_encode(['status' => 'success', 'score' => $score]);
+    }
+    
+
+    /*
+    public function submit_answer() {           
+        $roomId = $this->input->post('room_id');
+        $questionId = $this->input->post('question_id');
+        $answerId = $this->input->post('answer_id'); // Could be null for fill-in-the-blank
+        $answerText = $this->input->post('answer_text'); // For fill-in-the-blank
+        $responseTime = $this->input->post('response_time');
         
         $player_name = $this->session->userdata('player_name');
         $room_pin = $this->session->userdata('room_pin');
@@ -148,8 +195,19 @@ class main_controller extends CI_Controller {
             return;
         }
         
-        // Save participant's answer
-        $this->quiz_model->save_participant_answer($participantId, $roomId, $questionId, $answerId, $responseTime);
+        // Determine if the question is a fill-in-the-blank or multiple-choice
+        $isFill = $this->quiz_model->get_is_fill($questionId); // Add this method to get the isFill value
+        
+        if ($isFill === 0) {
+            // Save participant's multiple-choice answer
+            $this->quiz_model->save_participant_answer($participantId, $roomId, $questionId, $answerId, $responseTime);
+        } elseif ($isFill === 1) {
+            // Save participant's fill-in-the-blank answer
+            $this->quiz_model->save_participant_answer_text($participantId, $roomId, $questionId, $answerText, $responseTime);
+        } else {
+            echo json_encode(['status' => 'error', 'message' => 'Invalid question type.']);
+            return;
+        }
         
         // Calculate the score based on the answer and response time
         $score = $this->quiz_model->calculate_score($participantId, $roomId);
@@ -162,6 +220,7 @@ class main_controller extends CI_Controller {
         
         echo json_encode(['status' => 'success', 'score' => $score]);
     }
+    */
     
         
     public function hostgame() {
@@ -173,6 +232,30 @@ class main_controller extends CI_Controller {
         $this->load->view('host/host', $data);
     }
     
+    public function fetch_players_score_per_q() {
+        $question_id = $this->input->get('question_id');
+        $room_id = $this->input->get('room_id');
+    
+        // Log the input parameters
+        log_message('info', "Fetching scores for Question ID: $question_id, Room ID: $room_id");
+    
+        $players = $this->quiz_model->get_player_scores($question_id, $room_id);
+    
+        if ($players) {
+            $response = [
+                'status' => 'success',
+                'players' => $players
+            ];
+        } else {
+            $response = [
+                'status' => 'error',
+                'message' => 'No players found.'
+            ];
+        }
+    
+        echo json_encode($response);
+    }  
+
     public function get_players() {
         $roomPin = $this->session->userdata('room_pin');
     
@@ -341,30 +424,7 @@ class main_controller extends CI_Controller {
         // Return the response in JSON format
         echo json_encode($response);
     }
-
-    // Function to fetch players' scores per question
-    public function fetch_players_score_per_q() {
-        $question_id = $this->input->get('question_id');
-        
-        // Your logic to fetch player data based on question_id
-        // Example result
-        $players = $this->quiz_model->get_player_scores($question_id);
-        
-        if ($players) {
-            $response = [
-                'status' => 'success',
-                'players' => $players // Ensure this is an array
-            ];
-        } else {
-            $response = [
-                'status' => 'error',
-                'message' => 'No players found.'
-            ];
-        }
-    
-        // Return the JSON response
-        echo json_encode($response);
-    }    
+  
 
     public function fetch_room_id() {
         $roomPin = $this->input->post('roomPin');

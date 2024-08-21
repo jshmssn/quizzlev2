@@ -373,28 +373,55 @@
         }
     }
     
-    function handleFillInTheBlankAnswer(answerText, questionId) {
-        const waitingMessage = document.getElementById('waitingMessage');
+    function handleFillInTheBlankAnswer() {
+    const answerInput = document.getElementById('answer-input');
+    const submitButton = document.getElementById('submit-answer');
+    const waitingMessage = document.getElementById('waitingMessage');
+
+    submitButton.addEventListener('click', function() {
+        // Get the answer from the input field
+        const answerText = answerInput.value.trim();
+        
+        if (answerText === '') {
+            alert('Please enter an answer.');
+            return;
+        }
+
+        // Disable the input and button
+        answerInput.disabled = true;
+        submitButton.disabled = true;
         waitingMessage.removeAttribute('hidden');
         waitingMessage.style.display = 'block';
 
-        if (isSocketOpen) {
-            const data = {
-                type: 'answer_selected',
-                answerText: answerText,
-                questionId: questionId,
-                roomId: roomId
-            };
-            socket.send(JSON.stringify(data));
-            console.log('Selected answer data sent via WebSocket:', data);
-        } else {
-            console.error('Socket connection is not open.');
-        }
+        const responseTimeMs = Date.now() - questionStartTime; // Response time in milliseconds
+        const responseTimeSec = (responseTimeMs / 1000).toFixed(2); // Convert to seconds and round to 2 decimal places
 
-        answerInput.value = '';
-        fillInTheBlankContainer.setAttribute('hidden', 'true');
-        waitingMessage.style.display = 'block';
-    }
+        // Submit answer and calculate score
+        $.ajax({
+            url: '<?= site_url('main_controller/submit_answer') ?>',
+            type: 'POST',
+            data: {
+                room_id: roomId,
+                question_id: questionId,
+                answer_text: answerText,
+                response_time: responseTimeSec // Include response time in seconds in the request
+            },
+            success: function(response) {
+                const data = JSON.parse(response);
+                if (data.status === 'success') {
+                    // Display the score
+                    // displayScores(data.score);
+                    // Proceed to the next question or end the quiz
+                    // ...
+                }
+            },
+            error: function() {
+                alert('An error occurred while submitting your answer.');
+            }
+        });
+    });
+}
+
 
     async function fetchAnswers(questionId) {
         try {
@@ -461,7 +488,7 @@
         }
     }
 
-    function startCountdown(duration, questionId) {
+    function startCountdown(duration, questionId, roomId) {
         let timeLeft = duration;
 
         // Retrieve the remaining time from localStorage if it exists
@@ -497,37 +524,41 @@
                 submitAnswerButton.setAttribute('disabled', 'true');
                 showAnswer();
 
-                // Fetch player data via AJAX
-                fetchPlayerData(questionId) // Pass the questionId if needed
-                    .then(players => {
-                        // Generate the ranking table HTML with fetched players
-                        const rankingTableHtml = generateRankingTable(players);
+                // Set a 3-second delay before fetching player data
+                setTimeout(() => {
+                    // Fetch player data via AJAX
+                    fetchPlayerData(questionId, roomId) // Pass the questionId and roomId
+                        .then(players => {
+                            // Generate the ranking table HTML with fetched players
+                            const rankingTableHtml = generateRankingTable(players);
 
-                        // Show the ranking table in SweetAlert2
-                        Swal.fire({
-                            title: "Ranking",
-                            html: rankingTableHtml, // Insert the ranking table here
-                            icon: "info",
-                            showConfirmButton: false, // Disable the confirm button
-                            timer: 10000, // The alert will close automatically after 15 seconds
-                            timerProgressBar: true, // Display a progress bar showing the countdown
-                            allowOutsideClick: false, // Disable closing the alert by clicking outside
-                            allowEscapeKey: false // Disable escape key
-                        });
+                            // Show the ranking table in SweetAlert2
+                            Swal.fire({
+                                title: "Ranking",
+                                html: rankingTableHtml, // Insert the ranking table here
+                                icon: "info",
+                                showConfirmButton: false, // Disable the confirm button
+                                timer: 10000, // The alert will close automatically after 10 seconds
+                                timerProgressBar: true, // Display a progress bar showing the countdown
+                                allowOutsideClick: false, // Disable closing the alert by clicking outside
+                                allowEscapeKey: false // Disable escape key
+                            });
 
-                        localStorage.removeItem('countdownTime'); // Clear the stored time
-                    })
-                    .catch(error => {
-                        console.error('Error fetching player data:', error);
-                        // Optionally, handle the error or show an error message
-                        Swal.fire({
-                            title: "Error",
-                            text: "Failed to fetch player data.",
-                            icon: "error",
-                            confirmButtonText: "OK"
+                            localStorage.removeItem('countdownTime'); // Clear the stored time
+                        })
+                        .catch(error => {
+                            console.error('Error fetching player data:', error);
+                            // Optionally, handle the error or show an error message
+                            Swal.fire({
+                                title: "Error",
+                                text: "Failed to fetch player data.",
+                                icon: "error",
+                                confirmButtonText: "OK"
+                            });
                         });
-                    });
+                }, 3000); // 3000 milliseconds delay
             }
+
         }, 1000);
 
         // Initial update of the countdown bar
@@ -570,13 +601,17 @@
     }
 
     // AJAX function to fetch player data
-    function fetchPlayerData() {
+    function fetchPlayerData($question_id = questionId, $room_id = roomId) {
         console.log('Fetching player data for question ID:', questionId); // Add this line
+        console.log('Fetching player data for Room ID:', roomId);
         return new Promise((resolve, reject) => {
             $.ajax({
                 url: '<?= site_url('main_controller/fetch_players_score_per_q') ?>',
                 method: 'GET',
-                data: { question_id: questionId },
+                data: {
+                    question_id: questionId,
+                    room_id: roomId
+                },
                 dataType: 'json',
                 success: function(response) {
                     console.log('Raw response:', response);
@@ -665,6 +700,9 @@
         });
     }
 
+
+    
+
     function handleAnswerSelection(button, answerId, questionId) {
     const answerButtons = document.querySelectorAll('.btn.answer-btn');
     const waitingMessage = document.getElementById('waitingMessage');
@@ -705,6 +743,59 @@
 }
 
 
+/*
+function handleAnswerSelection(button, answerId, questionId, isFill) {
+    const answerButtons = document.querySelectorAll('.btn.answer-btn');
+    const waitingMessage = document.getElementById('waitingMessage');
+    const fillInAnswerInput = document.getElementById('fillInAnswerInput'); // Assuming you have an input for fill-in-the-blank answers
+
+    answerButtons.forEach(btn => {
+        btn.classList.add('disabled');
+        btn.disabled = true;
+        waitingMessage.removeAttribute('hidden');
+        waitingMessage.style.display = 'block';
+    });
+
+    button.classList.remove('disabled');
+    button.classList.add('selected');
+
+    const responseTimeMs = Date.now() - questionStartTime; // Response time in milliseconds
+    const responseTimeSec = (responseTimeMs / 1000).toFixed(2); // Convert to seconds and round to 2 decimal places
+
+    // Prepare data for the AJAX request
+    let data = {
+        room_id: roomId,
+        question_id: questionId,
+        response_time: responseTimeSec // Include response time in seconds in the request
+    };
+
+    if (isFill) {
+        // Handle fill-in-the-blank answers
+        const fillInAnswer = fillInAnswerInput.value.trim(); // Get the fill-in-the-blank answer
+        data.answer_text = fillInAnswer; // Include the fill-in-the-blank answer in the request
+    } else {
+        // Handle multiple-choice answers
+        data.answer_id = answerId; // Include the selected answer ID in the request
+    }
+
+    // Submit answer and calculate score
+    $.ajax({
+        url: '<?= site_url('main_controller/submit_answer') ?>',
+        type: 'POST',
+        data: data,
+        success: function(response) {
+            const data = JSON.parse(response);
+            if (data.status === 'success') {
+                // Display the score
+                // displayScores(data.score);
+                // Proceed to the next question or end the quiz
+                // ...
+            }
+        }
+    });
+}
+
+*/
     speakButton.addEventListener('click', () => {
         const questionText = questionTextElement.textContent;
         const speech = new SpeechSynthesisUtterance(questionText);
