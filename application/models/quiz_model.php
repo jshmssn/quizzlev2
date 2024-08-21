@@ -6,6 +6,23 @@ class quiz_model extends CI_Model {
         parent::__construct();
         $this->load->database();
     }
+
+    // Function to get player scores for a specific question
+    public function get_player_scores($question_id, $room_id) {
+        // Select the player's name and score
+        $this->db->select('p.name, pqs.score');
+        $this->db->from('participant_question_scores pqs');
+        $this->db->join('participants p', 'p.id = pqs.participant_id'); // Join the participants table
+        $this->db->where('pqs.room_id', $room_id);
+        $this->db->where('pqs.question_id', $question_id); // Filter by question_id
+        $this->db->order_by('pqs.score', 'DESC'); // Order by score in descending order
+        
+        // Execute the query
+        $query = $this->db->get();
+    
+        // Return the result as an associative array
+        return $query->result_array();
+    }   
 	
     public function save_question($questionText, $answers, $correctAnswerIndex, $roomId, $time, $imagePath, $isFill) {
         // Insert the question
@@ -379,23 +396,6 @@ class quiz_model extends CI_Model {
         $query = $this->db->get();
         return $query->result();
     }
-
-    // Function to get player scores for a specific question
-    public function get_player_scores($question_id, $room_id) {
-        // Select the player's name and score
-        $this->db->select('p.name, pqs.score');
-        $this->db->from('participant_question_scores pqs');
-        $this->db->join('participants p', 'p.id = pqs.participant_id'); // Join the participants table
-        $this->db->where('pqs.room_id', $room_id);
-        $this->db->where('pqs.question_id', $question_id); // Filter by question_id
-        $this->db->order_by('pqs.score', 'DESC'); // Order by score in descending order
-        
-        // Execute the query
-        $query = $this->db->get();
-    
-        // Return the result as an associative array
-        return $query->result_array();
-    }    
 
     // Fetch all Players with Final Scores
     public function get_all_players_final_scores($room_id) {
