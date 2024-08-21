@@ -23,6 +23,10 @@ class main_controller extends CI_Controller {
         $this->load->view('../views/create/quiz_creator');
     }
 
+    public function overall_ranking() {
+        $this->load->view('../views/ranking/rank');
+    }
+
     public function submit() {
         $items = array('player_name', 'room_pin');
         $this->session->unset_userdata($items);

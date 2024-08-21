@@ -216,7 +216,6 @@
     </div>
 </div>
 
-
 <!-- Score Overlay -->
 <div class="overlay hidden" id="score-overlay">
     <div class="overlay-text">Your Score:</div>
@@ -508,7 +507,7 @@
 
                             // Show the ranking table in SweetAlert2
                             Swal.fire({
-                                title: "Ranking",
+                                title: "Ranking per Question",
                                 html: rankingTableHtml, // Insert the ranking table here
                                 icon: "info",
                                 showConfirmButton: false, // Disable the confirm button
@@ -527,12 +526,15 @@
                                 title: "Error",
                                 text: "Failed to fetch player data.",
                                 icon: "error",
-                                confirmButtonText: "OK"
+                                showConfirmButton: false, // Disable the confirm button
+                                timer: 10000, // The alert will close automatically after 10 seconds
+                                timerProgressBar: true, // Display a progress bar showing the countdown
+                                allowOutsideClick: false, // Disable closing the alert by clicking outside
+                                allowEscapeKey: false // Disable escape key                            });
                             });
-                        });
-                }, 3000); // 3000 milliseconds delay
+                        }); 
+                }, 3000);// 3000 milliseconds delay
             }
-
         }, 1000);
 
         // Initial update of the countdown bar
@@ -626,24 +628,16 @@
             } else {
                 // Handle the end of the quiz
                 // console.log('Quiz completed!');
-                // Fetch player data via AJAX
-                fetchPlayerData().then(players => {
-                    Swal.fire({
-                        title: "Good job!",
-                        text: "The quiz is now done.",
-                        icon: "success",
-                        confirmButtonText: "Go to ranking"
-                    }).then((result) => {
-                        /* Read more about isConfirmed */
-                        if (result.isConfirmed) {
-                                
-                        }
-                    });
-
-                    localStorage.removeItem('countdownTime'); // Clear the stored time
-                }).catch(error => {
-                    console.error('Error fetching player data:', error);
-                    // Optionally, handle the error or show an error message
+                Swal.fire({
+                    title: "Good job!",
+                    text: "The quiz is now done.",
+                    icon: "success",
+                    confirmButtonText: "Go to ranking"
+                }).then((result) => {
+                    /* Read more about isConfirmed */
+                    if (result.isConfirmed) {
+                        window.location.href = '<?= site_url('/overall_ranking') ?>';
+                    }
                 });
         
                 // Refresh the page when OK is clicked

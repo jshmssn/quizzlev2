@@ -3,13 +3,13 @@ document.addEventListener('contextmenu', function (e) {
     e.preventDefault();
 });
 
-// Disable developer tools shortcuts
+// Disable developer tools shortcuts and F5 refresh
 document.addEventListener('keydown', function (e) {
-    if ((e.ctrlKey && e.shiftKey && e.keyCode == 73) || // Prevent Ctrl+Shift+I
-        (e.ctrlKey && e.shiftKey && e.keyCode == 74) || // Prevent Ctrl+Shift+J
-        (e.ctrlKey && e.keyCode == 85) ||              // Prevent Ctrl+U
-        (e.keyCode == 123)) {                          // Prevent F12
+    // Disable Ctrl+Shift+I, Ctrl+Shift+J, Ctrl+U, and F12
+    if ((e.ctrlKey && e.shiftKey && e.key === 'I') || // Prevent Ctrl+Shift+I
+        (e.ctrlKey && e.shiftKey && e.key === 'J') || // Prevent Ctrl+Shift+J
+        (e.ctrlKey && e.key === 'U') ||              // Prevent Ctrl+U
+        (e.key === 'F12')) {                         // Prevent F12
         e.preventDefault();
-        return false;
     }
 });
