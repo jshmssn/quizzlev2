@@ -287,8 +287,8 @@
     const fillInTheBlankContainer = document.getElementById('fill-in-the-blank');
     const answerInput = document.getElementById('answer-input');
     const submitAnswerButton = document.getElementById('submit-answer');
-    const scoreDisplay = document.getElementById('scoreDisplay'); // Add this for score display
-
+    const scoreDisplay = document.getElementById('scoreDisplay'); 
+    const submitButton = document.getElementById('submit-answer');
 
     if (!roomId) {
         console.error('Room id is required.');
@@ -344,83 +344,91 @@
 
     let questionStartTime = null; // Add this variable to track the question start time
     let questionId = null;
+
     function displayQuestion(question) {
-        if (!question) return;
+    if (!question) return;
 
-        questionStartTime = Date.now(); // Record the time when the question is displayed
-        questionId = question.id;
-        // Existing code for displaying the question
-        questionTextElement.textContent = question.question_text || 'Loading question...';
-        questionNumberElement.textContent = `Question ${currentQuestionIndex + 1} out of ${questions.length}`;
-        
-        loadImage(question.id);
-        fetchAnswers(question.id);
-        fetchCorrectAnswers(question.id);
-        fetchPlayerData(questionId);
-        startCountdown(question.time);
+    questionStartTime = Date.now(); // Record the time when the question is displayed
+    questionId = question.id;
 
-        submitAnswerButton.removeAttribute('disabled');
+    // Existing code for displaying the question
+    questionTextElement.textContent = question.question_text || 'Loading question...';
+    questionNumberElement.textContent = `Question ${currentQuestionIndex + 1} out of ${questions.length}`;
 
-        if (question.isFill === '1') {
-            answersElement.style.display = 'none';
-            fillInTheBlankContainer.removeAttribute('hidden');
-            fillInTheBlankContainer.style.display = 'block';
-            submitAnswerButton.removeEventListener('click', handleFillInTheBlankAnswer);
-            submitAnswerButton.addEventListener('click', () => handleFillInTheBlankAnswer(answerInput.value, question.id));
-        } else {
-            fillInTheBlankContainer.style.display = 'none';
-            answersElement.style.display = 'flex';
-        }
-    }
+    loadImage(question.id);
+    fetchAnswers(question.id);
+    fetchCorrectAnswers(question.id);
+    fetchPlayerData(questionId);
+    startCountdown(question.time);
+
+
+    submitAnswerButton.removeAttribute('disabled');
+    answerInput.removeAttribute('disabled');
     
-    function handleFillInTheBlankAnswer() {
+    // Remove previous event listeners to prevent multiple bindings
+    submitAnswerButton.removeEventListener('click', handleFillInTheBlankAnswer);
+
+    if (question.isFill === '1') {
+        answersElement.style.display = 'none';
+        fillInTheBlankContainer.removeAttribute('hidden');
+        fillInTheBlankContainer.style.display = 'block';
+
+        // Bind the event listener with the current question ID
+        submitAnswerButton.addEventListener('click', () => handleFillInTheBlankAnswer(question.id));
+    } else {
+        fillInTheBlankContainer.style.display = 'none';
+        answersElement.style.display = 'flex';
+    }
+}
+
+ 
+function handleFillInTheBlankAnswer(questionId) {
     const answerInput = document.getElementById('answer-input');
     const submitButton = document.getElementById('submit-answer');
     const waitingMessage = document.getElementById('waitingMessage');
 
-    submitButton.addEventListener('click', function() {
-        // Get the answer from the input field
-        const answerText = answerInput.value.trim();
-        
-        if (answerText === '') {
-            alert('Please enter an answer.');
-            return;
-        }
+    // Get the answer from the input field
+    const answerText = answerInput.value.trim();
 
-        // Disable the input and button
-        answerInput.disabled = true;
-        submitButton.disabled = true;
-        waitingMessage.removeAttribute('hidden');
-        waitingMessage.style.display = 'block';
+    if (answerText === '') {
+        alert('Please enter an answer.');
+        return;
+    }
 
-        const responseTimeMs = Date.now() - questionStartTime; // Response time in milliseconds
-        const responseTimeSec = (responseTimeMs / 1000).toFixed(2); // Convert to seconds and round to 2 decimal places
+    // Disable the input and button
+    answerInput.disabled = true;
+    submitButton.disabled = true;
+    waitingMessage.removeAttribute('hidden');
+    waitingMessage.style.display = 'block';
 
-        // Submit answer and calculate score
-        $.ajax({
-            url: '<?= site_url('main_controller/submit_answer') ?>',
-            type: 'POST',
-            data: {
-                room_id: roomId,
-                question_id: questionId,
-                answer_text: answerText,
-                response_time: responseTimeSec // Include response time in seconds in the request
-            },
-            success: function(response) {
-                const data = JSON.parse(response);
-                if (data.status === 'success') {
-                    // Display the score
-                    // displayScores(data.score);
-                    // Proceed to the next question or end the quiz
-                    // ...
-                }
-            },
-            error: function() {
-                alert('An error occurred while submitting your answer.');
+    const responseTimeMs = Date.now() - questionStartTime; // Response time in milliseconds
+    const responseTimeSec = (responseTimeMs / 1000).toFixed(2); // Convert to seconds and round to 2 decimal places
+
+    // Submit answer and calculate score
+    $.ajax({
+        url: '<?= site_url('main_controller/submit_answer') ?>',
+        type: 'POST',
+        data: {
+            room_id: roomId,
+            question_id: questionId,
+            answer_text: answerText,
+            response_time: responseTimeSec // Include response time in seconds in the request
+        },
+        success: function(response) {
+            const data = JSON.parse(response);
+            if (data.status === 'success') {
+                // Display the score
+                // displayScores(data.score);
+                // Proceed to the next question or end the quiz
+                // ...
             }
-        });
+        },
+        error: function() {
+            alert('An error occurred while submitting your answer.');
+        }
     });
 }
+
 
 
     async function fetchAnswers(questionId) {
