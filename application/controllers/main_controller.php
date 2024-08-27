@@ -476,16 +476,28 @@ class main_controller extends CI_Controller {
     }
 
     public function fetch_correct_answers() {
+        // Get the question_id from the POST request
         $question_id = $this->input->post('question_id');
-    
+        
+        // Load the quiz model
         $this->load->model('quiz_model');
+        
+        // Fetch the correct answers from the model
         $answers = $this->quiz_model->get_correct_answers($question_id);
+        
+        // Ensure the response is UTF-8 encoded
+        header('Content-Type: application/json; charset=utf-8');
     
+        // Check if answers were found
         if ($answers) {
-            echo json_encode(['status' => 'success', 'data' => $answers]);
+            // Return the encrypted answers in a JSON response
+            echo json_encode(['status' => 'success', 'data' => $answers], JSON_UNESCAPED_UNICODE);
         } else {
-            echo json_encode(['status' => 'error', 'message' => 'No correct answers found.']);
+            // Return an error message in a JSON response
+            echo json_encode(['status' => 'error', 'message' => 'No correct answers found.'], JSON_UNESCAPED_UNICODE);
         }
+    
+        exit; // Ensure no further output is sent
     }    
     
     public function start_game() {
@@ -520,8 +532,28 @@ class main_controller extends CI_Controller {
         }
     }
 
-    public function add_player_to_score_question(){
+    public function add_player_to_score_question() {
+        $playerName = $this->input->post('player_name');
+        $questionId = $this->input->post('question_id');
+        $roomId = $this->input->post('room_id');
 
+        // Fetch participant_id based on player_name and room_id
+        $participantId = $this->quiz_model->get_participant_id($playerName, $roomId);
+
+        if ($participantId) {
+            // Save to participants_question_score
+            $saveStatus = $this->quiz_model->save_participant_question_score($participantId, $roomId, $questionId);
+            $response = "";
+            if ($saveStatus) {
+                // $response = ['status' => 'success', 'message' => 'Participant score saved successfully.'];
+            } else {
+                // $response = ['status' => 'error', 'message' => 'Failed to save participant score.'];
+            }
+        } else {
+            // $response = ['status' => 'error', 'message' => 'Participant not found.'];
+        }
+
+        echo json_encode($response);
     }
 }
 ?>

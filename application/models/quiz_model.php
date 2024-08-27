@@ -530,9 +530,38 @@ class quiz_model extends CI_Model {
         $this->db->where('question_id', $question_id);
         $this->db->where('is_correct', 1);
         $query = $this->db->get('answers');
-        return $query->result_array(); // Returns array of associative arrays with 'id' key
+        
+        $results = $query->result_array(); // Get the results as an array
+    
+        // Encrypt the IDs and answer texts using AES
+        foreach ($results as &$result) {
+            $result['answer_text'] = $this->encrypt($result['answer_text']); // Encrypt the answer
+            $result['id'] = $this->encrypt($result['id']); // Encrypt the ID
+        }
+        
+        return $results; // Returns array of associative arrays with encrypted 'id' and 'answer_text'
     }
     
+    private function encrypt($data) {
+        $key = 'ifXaX/iMr+h+VwCbRNxaJQ=='; // Your encryption key
+        $iv = openssl_random_pseudo_bytes(openssl_cipher_iv_length('aes-128-cbc')); // Generate a random IV
+        $encryptedData = openssl_encrypt($data, 'aes-128-cbc', base64_decode($key), OPENSSL_RAW_DATA, $iv);
+        
+        // Return the IV and encrypted data, both base64-encoded
+        return base64_encode($iv . $encryptedData); // Concatenate IV and encrypted data
+    }
+    
+    private function decrypt($data) {
+        $key = 'ifXaX/iMr+h+VwCbRNxaJQ=='; // Your encryption key
+        $data = base64_decode($data); // Decode the base64 data
+    
+        // Extract the IV and encrypted data
+        $ivLength = openssl_cipher_iv_length('aes-128-cbc');
+        $iv = substr($data, 0, $ivLength); // Get the IV
+        $encryptedData = substr($data, $ivLength); // Get the encrypted data
+    
+        return openssl_decrypt($encryptedData, 'aes-128-cbc', base64_decode($key), OPENSSL_RAW_DATA, $iv); // Decrypt using the extracted IV
+    }       
 
     public function get_image_path($questId) {
         // Example query to get the image path
@@ -547,5 +576,42 @@ class quiz_model extends CI_Model {
         
         return ''; // Return empty if no path found
     }
+
+    public function get_participant_id($playerName, $roomId) {
+        $this->db->select('id');
+        $this->db->from('participants');
+        $this->db->where('name', $playerName);
+        $this->db->where('room_id', $roomId);
+        $query = $this->db->get();
+
+        if ($query->num_rows() > 0) {
+            return $query->row()->id;
+        } else {
+            return false;
+        }
+    }
+
+    public function save_participant_question_score($participantId, $roomId, $questionId) {
+    // Check if the entry already exists
+    $this->db->where('participant_id', $participantId);
+    $this->db->where('room_id', $roomId);
+    $this->db->where('question_id', $questionId);
+    $query = $this->db->get('participant_question_scores');
+
+    // If the entry exists, do not insert a new row
+    if ($query->num_rows() > 0) {
+        return false; // Or return a message indicating that the record already exists
+    }
+
+    // If the entry does not exist, insert the new row
+    $data = [
+        'participant_id' => $participantId,
+        'room_id' => $roomId,
+        'question_id' => $questionId
+    ];
+
+    return $this->db->insert('participant_question_scores', $data);
+}
+
 }
 ?>

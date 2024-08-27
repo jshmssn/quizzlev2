@@ -221,6 +221,7 @@
 <div id="correctAnswer" class="text-center mt-3" hidden>The correct answer is </div>
 
 <!-- Bootstrap JS and dependencies -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/3.1.9-1/crypto-js.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.7.1/jquery.min.js" integrity="sha512-v2CJ7UaYy4JwqLDIrZUI/4hqeoQieOmAZNXBeQyjo21dadnwR+8ZaIJVT8EE2iyI61OV8e6M8PP2/4hpQINQ/g==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
 <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.5.4/dist/umd/popper.min.js"></script>
 <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
@@ -350,6 +351,7 @@
         fetchAnswers(question.id);
         fetchCorrectAnswers(question.id);
         startCountdown(question.time);
+        add_player_to_score_question(questionId, playerName, roomId)
 
         submitAnswerButton.removeAttribute('disabled');
 
@@ -457,21 +459,19 @@
             });
 
             if (response.status === 'success') {
-                // console.log('Correct Answer:', response.data);
-
                 const correctAnswer = document.getElementById('correctAnswer');
                 if (correctAnswer) {
                     correctAnswer.innerHTML = ''; // Clear any previous content
                     
                     response.data.forEach(answer => {
-                        const answerText = answer.answer_text; // Adjust this if your data structure is different
-                        console.log(answer.answer_text);
-                        correctAnswer.innerHTML += `<h3>The correct answer is <span style="color: #cc0000;">${answerText}</span></h3>`;
+                        const encryptedAnswerText = answer.answer_text; // Encrypted answer
+                        const decryptedAnswerText = decrypt(encryptedAnswerText); // Decrypting the answer text
+
+                        correctAnswer.innerHTML += `<h3>The correct answer is <span style="color: #cc0000;">${decryptedAnswerText}</span></h3>`;
                     });
                 } else {
                     console.error('Element with id "correctAnswer" not found.');
                 }
-
             } else {
                 console.error('Error:', response.message);
             }
@@ -479,6 +479,34 @@
             console.error('AJAX error:', error);
         }
     }
+
+    // Decrypt function for use in JavaScript
+    function decrypt(encryptedText) {
+        const key = 'ifXaX/iMr+h+VwCbRNxaJQ=='; // Your encryption key
+        const keyBytes = CryptoJS.enc.Base64.parse(key);
+
+        // Decode the base64 encrypted text
+        const encryptedData = CryptoJS.enc.Base64.parse(encryptedText);
+
+        // Assuming the first 16 bytes are the IV
+        const iv = CryptoJS.lib.WordArray.create(encryptedData.words.slice(0, 4)); // 16 bytes / 4 = 4 words
+        const ciphertext = CryptoJS.lib.WordArray.create(encryptedData.words.slice(4)); // The rest is the ciphertext
+
+        // Prepare cipher params
+        const cipherParams = CryptoJS.lib.CipherParams.create({
+            ciphertext: ciphertext
+        });
+
+        // Decrypt using CryptoJS
+        const decrypted = CryptoJS.AES.decrypt(cipherParams, keyBytes, {
+            iv: iv,
+            mode: CryptoJS.mode.CBC,
+            padding: CryptoJS.pad.Pkcs7
+        });
+
+        return decrypted.toString(CryptoJS.enc.Utf8); // Convert to string
+    }
+
 
     function startCountdown(duration, questionId, roomId) {
         let timeLeft = duration;
@@ -526,7 +554,7 @@
 
                             // Show the ranking table in SweetAlert2
                             Swal.fire({
-                                title: "Ranking per Question",
+                                title: "Scores",
                                 html: rankingTableHtml, // Insert the ranking table here
                                 icon: "info",
                                 showConfirmButton: false, // Disable the confirm button
@@ -598,8 +626,6 @@
 
     // AJAX function to fetch player data
     function fetchPlayerData($question_id = questionId, $room_id = roomId) {
-        console.log('Fetching player data for question ID:', questionId); // Add this line
-        console.log('Fetching player data for Room ID:', roomId);
         return new Promise((resolve, reject) => {
             $.ajax({
                 url: '<?= site_url('main_controller/fetch_players_score_per_q') ?>',
@@ -610,7 +636,7 @@
                 },
                 dataType: 'json',
                 success: function(response) {
-                    console.log('Raw response:', response);
+                    // console.log('Raw response:', response);
                     if (response.status === 'success' && Array.isArray(response.players)) {
                         resolve(response.players);
                     } else {
@@ -688,9 +714,6 @@
         });
     }
 
-
-    
-
     function handleAnswerSelection(button, answerId, questionId) {
         const answerButtons = document.querySelectorAll('.btn.answer-btn');
         const waitingMessage = document.getElementById('waitingMessage');
@@ -730,10 +753,10 @@
         });
     }
 
-    function add_player_to_score_question(playerName, questionId, roomId) {
+    async function add_player_to_score_question(questionId, playerName, roomId) {
         try {
             const response = await $.ajax({
-                url: '<?= site_url('main_controller/fetch_answers')?>',
+                url: '<?= site_url('main_controller/add_player_to_score_question')?>',
                 type: 'POST',
                 data: 
                 {   question_id: questionId,
@@ -743,11 +766,9 @@
                 dataType: 'json'
             });
             if (response.status === 'success') {
-                alert('OK');
-
-                
+                // alert('OK');
             } else {
-                console.error('Error:', response.message);
+                // console.error('Error:', response.message);
             }
         } catch (error) {
             console.error('AJAX error:', error);

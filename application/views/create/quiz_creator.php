@@ -159,7 +159,7 @@
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.min.js" integrity="sha384-BBtl+eGJRgqQAUMxJ7pMwbEyER4l1g+O15P+16Ep7Q9Q+zqX6gSbd85u4mG4QzX+" crossorigin="anonymous"></script>
     <script>
     // Initial quiz index
-    let quizIndex = 1;
+    let quizIndex = 0;
 
     // Button click event listeners
     document.getElementById('add-quiz').addEventListener('click', function() {
@@ -175,6 +175,7 @@
             <div class="mb-3">
                 <label for="question-${quizIndex}" class="form-label">Question ${quizIndex}</label>
                 <input type="text" id="question-${quizIndex}" name="questions[${quizIndex}][text]" class="form-control question" placeholder="Enter question" required>
+                <input type="text" hidden name="questions[${quizIndex}][fillable]" value="0">
             </div>
             <div class="mb-3">
                 <label for="image-${quizIndex}" class="form-label">Upload Image</label>
