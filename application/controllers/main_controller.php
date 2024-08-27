@@ -257,11 +257,11 @@ class main_controller extends CI_Controller {
         $name = $this->input->post('name');
         $room_pin = $this->input->post('room_pin');
         
-        // Validate the input (e.g., check if the room_pin exists)
+        // Validate the input and get room details (e.g., check if the room_pin exists)
         $validation_result = $this->quiz_model->validate_room_pin($room_pin);
 
         // Check if the room is valid and has started
-        if ($validation_result['isValid'] == '0' && $validation_result['hasStarted'] == '1') {
+        if ($validation_result['isValid'] == '0' || $validation_result['hasStarted'] == '1') {
             // Set an error message in flashdata
             $this->session->set_flashdata("status", "error");
             $this->session->set_flashdata("msg", "The game has already started or the room is invalid.");
@@ -269,12 +269,13 @@ class main_controller extends CI_Controller {
             // Redirect to an error page or previous page
             redirect('/error'); // Adjust the redirect URL as needed
         } elseif ($validation_result['isValid'] == '1' && $validation_result['hasStarted'] == '0') {
-            // Process the join logic and get the unique player name
-            $unique_name = $this->quiz_model->process_join($name, $room_pin);
+            // Process the join logic and get the unique player name along with room_id
+            $unique_name = $this->quiz_model->process_join($name, $room_pin, $validation_result['room_id']);
             
-            // Store the player's unique name and room_pin in session data
+            // Store the player's unique name, room_pin, and room_id in session data
             $this->session->set_userdata('player_name', $unique_name);
             $this->session->set_userdata('room_pin', $room_pin);
+            $this->session->set_userdata('room_id', $validation_result['room_id']);
             
             // Redirect to the room
             redirect('room/'. $room_pin);
@@ -517,6 +518,10 @@ class main_controller extends CI_Controller {
             $this->session->set_flashdata('status', 'error');
             $this->session->set_flashdata('msg', 'Room PIN is not set.');
         }
+    }
+
+    public function add_player_to_score_question(){
+
     }
 }
 ?>

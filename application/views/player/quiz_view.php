@@ -216,14 +216,6 @@
     </div>
 </div>
 
-<!-- Score Overlay -->
-<div class="overlay hidden" id="score-overlay">
-    <div class="overlay-text">Your Score:</div>
-    <div id="score-text" class="countdown-timer">0</div>
-</div>
-
-
-
 <!-- Will display Waiting and Correct answer after all players have answered -->
 <div id="waitingMessage" class="text-center mt-3" hidden>Waiting for other players to answer...</div>
 <div id="correctAnswer" class="text-center mt-3" hidden>The correct answer is </div>
@@ -287,7 +279,7 @@
     const answerInput = document.getElementById('answer-input');
     const submitAnswerButton = document.getElementById('submit-answer');
     const scoreDisplay = document.getElementById('scoreDisplay'); // Add this for score display
-
+    const playerName = "<?= $this->session->userdata('player_name') ?>";
 
     if (!roomId) {
         console.error('Room id is required.');
@@ -700,98 +692,68 @@
     
 
     function handleAnswerSelection(button, answerId, questionId) {
-    const answerButtons = document.querySelectorAll('.btn.answer-btn');
-    const waitingMessage = document.getElementById('waitingMessage');
+        const answerButtons = document.querySelectorAll('.btn.answer-btn');
+        const waitingMessage = document.getElementById('waitingMessage');
 
-    answerButtons.forEach(btn => {
-        btn.classList.add('disabled');
-        btn.disabled = true;
-        waitingMessage.removeAttribute('hidden');
-        waitingMessage.style.display = 'block';
-    });
+        answerButtons.forEach(btn => {
+            btn.classList.add('disabled');
+            btn.disabled = true;
+            waitingMessage.removeAttribute('hidden');
+            waitingMessage.style.display = 'block';
+        });
 
-    button.classList.remove('disabled');
-    button.classList.add('selected');
+        button.classList.remove('disabled');
+        button.classList.add('selected');
 
-    const responseTimeMs = Date.now() - questionStartTime; // Response time in milliseconds
-    const responseTimeSec = (responseTimeMs / 1000).toFixed(2); // Convert to seconds and round to 2 decimal places
+        const responseTimeMs = Date.now() - questionStartTime; // Response time in milliseconds
+        const responseTimeSec = (responseTimeMs / 1000).toFixed(2); // Convert to seconds and round to 2 decimal places
 
-    // Submit answer and calculate score
-    $.ajax({
-        url: '<?= site_url('main_controller/submit_answer') ?>',
-        type: 'POST',
-        data: {
-            room_id: roomId,
-            question_id: questionId,
-            answer_id: answerId,
-            response_time: responseTimeSec // Include response time in seconds in the request
-        },
-        success: function(response) {
-            const data = JSON.parse(response);
-            if (data.status === 'success') {
-                // Display the score
-               // displayScores(data.score);
-                // Proceed to the next question or end the quiz
-                // ...
+        // Submit answer and calculate score
+        $.ajax({
+            url: '<?= site_url('main_controller/submit_answer') ?>',
+            type: 'POST',
+            data: {
+                room_id: roomId,
+                question_id: questionId,
+                answer_id: answerId,
+                response_time: responseTimeSec // Include response time in seconds in the request
+            },
+            success: function(response) {
+                const data = JSON.parse(response);
+                if (data.status === 'success') {
+                    // Display the score
+                // displayScores(data.score);
+                    // Proceed to the next question or end the quiz
+                    // ...
+                }
             }
-        }
-    });
-}
-
-
-/*
-function handleAnswerSelection(button, answerId, questionId, isFill) {
-    const answerButtons = document.querySelectorAll('.btn.answer-btn');
-    const waitingMessage = document.getElementById('waitingMessage');
-    const fillInAnswerInput = document.getElementById('fillInAnswerInput'); // Assuming you have an input for fill-in-the-blank answers
-
-    answerButtons.forEach(btn => {
-        btn.classList.add('disabled');
-        btn.disabled = true;
-        waitingMessage.removeAttribute('hidden');
-        waitingMessage.style.display = 'block';
-    });
-
-    button.classList.remove('disabled');
-    button.classList.add('selected');
-
-    const responseTimeMs = Date.now() - questionStartTime; // Response time in milliseconds
-    const responseTimeSec = (responseTimeMs / 1000).toFixed(2); // Convert to seconds and round to 2 decimal places
-
-    // Prepare data for the AJAX request
-    let data = {
-        room_id: roomId,
-        question_id: questionId,
-        response_time: responseTimeSec // Include response time in seconds in the request
-    };
-
-    if (isFill) {
-        // Handle fill-in-the-blank answers
-        const fillInAnswer = fillInAnswerInput.value.trim(); // Get the fill-in-the-blank answer
-        data.answer_text = fillInAnswer; // Include the fill-in-the-blank answer in the request
-    } else {
-        // Handle multiple-choice answers
-        data.answer_id = answerId; // Include the selected answer ID in the request
+        });
     }
 
-    // Submit answer and calculate score
-    $.ajax({
-        url: '<?= site_url('main_controller/submit_answer') ?>',
-        type: 'POST',
-        data: data,
-        success: function(response) {
-            const data = JSON.parse(response);
-            if (data.status === 'success') {
-                // Display the score
-                // displayScores(data.score);
-                // Proceed to the next question or end the quiz
-                // ...
-            }
-        }
-    });
-}
+    function add_player_to_score_question(playerName, questionId, roomId) {
+        try {
+            const response = await $.ajax({
+                url: '<?= site_url('main_controller/fetch_answers')?>',
+                type: 'POST',
+                data: 
+                {   question_id: questionId,
+                    player_name: playerName,
+                    room_id: roomId
+                },
+                dataType: 'json'
+            });
+            if (response.status === 'success') {
+                alert('OK');
 
-*/
+                
+            } else {
+                console.error('Error:', response.message);
+            }
+        } catch (error) {
+            console.error('AJAX error:', error);
+        }
+    }
+
     speakButton.addEventListener('click', () => {
         const questionText = questionTextElement.textContent;
         const speech = new SpeechSynthesisUtterance(questionText);

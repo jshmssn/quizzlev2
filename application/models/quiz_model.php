@@ -333,7 +333,28 @@ class quiz_model extends CI_Model {
         return $query->row_array();
     }
 
-    public function process_join($name, $room_pin) {
+    public function validate_room_pin($room_pin) {
+        // Ensure the room_pin is properly sanitized/validated if necessary
+        $this->db->where('pin', $room_pin);
+        $query = $this->db->get('rooms');
+        
+        if ($query->num_rows() > 0) {
+            $result = $query->row_array(); // Get the row as an associative array
+            return [
+                'isValid' => $result['isValid'],
+                'hasStarted' => $result['hasStarted'],
+                'room_id' => $result['room_id'] // Get the room_id
+            ];
+        } else {
+            return [
+                'isValid' => 0,
+                'hasStarted' => 0,
+                'room_id' => null
+            ];
+        }
+    }
+    
+    public function process_join($name, $room_pin, $room_id) {
         // Check if the name already exists for this room_pin
         $original_name = $name;
         $counter = 1;
@@ -344,10 +365,11 @@ class quiz_model extends CI_Model {
             $counter++;
         }
         
-        // Insert the unique player name into the 'participants' table
+        // Insert the unique player name into the 'participants' table along with room_id
         $data = array(
             'name' => $name,
-            'room_pin' => $room_pin
+            'room_pin' => $room_pin,
+            'room_id' => $room_id // Store room_id along with the player
         );
         
         $this->db->insert('participants', $data);
@@ -356,25 +378,20 @@ class quiz_model extends CI_Model {
         return $name;
     }    
     
-    public function validate_room_pin($room_pin) {
-        // Ensure the room_pin is properly sanitized/validated if necessary
+    public function add_players_to_score_question($name, $room_pin){
+        $this->db->select('name');
         $this->db->where('pin', $room_pin);
-        $query = $this->db->get('rooms');
+        $query = $this->db->get('participants');
+        $result = $query->row_array();
+
+        $data = array(
+            'name' => $name,
+            'room_pin' => $room_pin
+        );
         
-        if ($query->num_rows() > 0) {
-            $result = $query->row_array(); // Get the row as an associative array
-            return [
-                'isValid' => $result['isValid'],
-                'hasStarted' => $result['hasStarted']
-            ];
-        } else {
-            return [
-                'isValid' => 0,
-                'hasStarted' => 0
-            ];
-        }
+        $this->db->insert('participants', $data);
     }
-    
+
     public function invalidate_room($roomId) {
         $data = array('isValid' => 0);
         $this->db->where('room_id', $roomId);
