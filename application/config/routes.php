@@ -60,11 +60,15 @@ $route['overall_ranking'] = 'main_controller/overall_ranking';
 $route['404_override'] = '';
 $route['translate_uri_dashes'] = FALSE;
 
+// Route for viewing logs for a specific room
+$route['quiz_logs/(:any)'] = 'main_controller/view_logs/$1';
+// Route for viewing logs for a specific participant in a specific room
+$route['quiz_logs/(:any)/(:num)'] = 'main_controller/view_logs/$1/$2';
+
 // Routes for ApiController
 $route['api/fetch_node'] = 'api/ApiController/fetch_from_node';
 $route['test/hello'] = 'TestController/hello';
 $route['start-timer'] = 'time_controller/start_timer';
-
 
 // Example of a route that captures an ID parameter
 // $route['api/item/(:num)'] = 'ApiController/item/$1'; // Maps to ApiController::item($id)

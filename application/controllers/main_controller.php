@@ -27,6 +27,31 @@ class main_controller extends CI_Controller {
         $this->load->view('../views/ranking/rank');
     }
 
+    public function view_logs($roomId, $participantId = null) {
+        $this->load->model('quiz_model');
+    
+        // Fetch logs from the model
+        if ($participantId) {
+            // Fetch logs for a specific participant in the room
+            $data['quiz_logs'] = $this->quiz_model->get_logs_by_room_and_participant($roomId, $participantId);
+        } else {
+            // Fetch logs for the entire room
+            $data['quiz_logs'] = $this->quiz_model->get_logs_by_room($roomId);
+        }
+        
+        // Load the view and pass the data
+        $this->load->view('../views/player/quiz_logs_view', $data);
+    }
+    
+    
+    
+    
+    
+    
+    
+    
+    
+
     public function submit() {
         $items = array('player_name', 'room_pin');
         $this->session->unset_userdata($items);
@@ -137,7 +162,7 @@ class main_controller extends CI_Controller {
         $roomId = $this->input->post('room_id');
         $questionId = $this->input->post('question_id');
         $answerId = $this->input->post('answer_id');
-        $responseTime = $this->input->post('response_time'); // Retrieve the time taken from the request
+        $responseTime = $this->input->post('response_time');
         $answerText = $this->input->post('answer_text'); // For fill-in-the-blank answers
     
         $player_name = $this->session->userdata('player_name');
@@ -155,6 +180,11 @@ class main_controller extends CI_Controller {
         
         // Check if the question is fill-in-the-blank
         $isFill = $this->quiz_model->is_fill_in_the_blank($questionId);
+        
+        // Get the answer text if it's a multiple-choice question
+        if (!$isFill) {
+            $answerText = $this->quiz_model->get_answer_text($answerId, $questionId);
+        }
         
         // Save participant's answer
         if ($isFill) {
@@ -176,6 +206,7 @@ class main_controller extends CI_Controller {
         
         echo json_encode(['status' => 'success', 'score' => $score]);
     }
+    
     
         
     public function hostgame() {
@@ -237,6 +268,8 @@ class main_controller extends CI_Controller {
         $data['total_score'] = $total_score;
         $this->load->view('view_score', $data);
     }
+
+   
 
   
 /*

@@ -22,7 +22,7 @@
             left: 0;
             width: 100%;
             height: 100%;
-            background-color: #cc0000;
+            background-color: #A12124;
             color: #fff;
             display: flex;
             flex-direction: column;
@@ -216,6 +216,15 @@
     </div>
 </div>
 
+
+<!-- Score Overlay -->
+<div class="overlay hidden" id="score-overlay">
+    <div class="overlay-text">Your Score:</div>
+    <div id="score-text" class="countdown-timer">0</div>
+</div>
+
+
+
 <!-- Will display Waiting and Correct answer after all players have answered -->
 <div id="waitingMessage" class="text-center mt-3" hidden>Waiting for other players to answer...</div>
 <div id="correctAnswer" class="text-center mt-3" hidden>The correct answer is </div>
@@ -278,8 +287,8 @@
     const fillInTheBlankContainer = document.getElementById('fill-in-the-blank');
     const answerInput = document.getElementById('answer-input');
     const submitAnswerButton = document.getElementById('submit-answer');
-    const scoreDisplay = document.getElementById('scoreDisplay'); // Add this for score display
-    const playerName = "<?= $this->session->userdata('player_name') ?>";
+    const scoreDisplay = document.getElementById('scoreDisplay'); 
+    const submitButton = document.getElementById('submit-answer');
 
     if (!roomId) {
         console.error('Room id is required.');
@@ -335,84 +344,96 @@
 
     let questionStartTime = null; // Add this variable to track the question start time
     let questionId = null;
+    let handleAnswerClick = null; // Define a variable to store the event handler function
 
     function displayQuestion(question) {
         if (!question) return;
 
         questionStartTime = Date.now(); // Record the time when the question is displayed
         questionId = question.id;
-        
+
         // Existing code for displaying the question
         questionTextElement.textContent = question.question_text || 'Loading question...';
         questionNumberElement.textContent = `Question ${currentQuestionIndex + 1} out of ${questions.length}`;
-        
+
         loadImage(question.id);
         fetchAnswers(question.id);
         fetchCorrectAnswers(question.id);
+        fetchPlayerData(questionId);
         startCountdown(question.time);
 
         submitAnswerButton.removeAttribute('disabled');
+        answerInput.removeAttribute('disabled');
+
+        // Remove previous event listeners to prevent multiple bindings
+        if (handleAnswerClick) {
+            submitAnswerButton.removeEventListener('click', handleAnswerClick);
+        }
 
         if (question.isFill === '1') {
             answersElement.style.display = 'none';
             fillInTheBlankContainer.removeAttribute('hidden');
             fillInTheBlankContainer.style.display = 'block';
-            submitAnswerButton.removeEventListener('click', handleFillInTheBlankAnswer);
-            submitAnswerButton.addEventListener('click', () => handleFillInTheBlankAnswer(answerInput.value, question.id));
+
+            // Define the event handler function
+            handleAnswerClick = () => handleFillInTheBlankAnswer(question.id);
+
+            // Add the event listener with the defined function
+            submitAnswerButton.addEventListener('click', handleAnswerClick);
         } else {
             fillInTheBlankContainer.style.display = 'none';
             answersElement.style.display = 'flex';
         }
     }
-    
-    function handleFillInTheBlankAnswer() {
+
+ 
+    function handleFillInTheBlankAnswer(questionId) {
     const answerInput = document.getElementById('answer-input');
     const submitButton = document.getElementById('submit-answer');
     const waitingMessage = document.getElementById('waitingMessage');
 
-    submitButton.addEventListener('click', function() {
-        // Get the answer from the input field
-        const answerText = answerInput.value.trim();
-        
-        if (answerText === '') {
-            alert('Please enter an answer.');
-            return;
-        }
+    // Get the answer from the input field
+    const answerText = answerInput.value.trim();
 
-        // Disable the input and button
-        answerInput.disabled = true;
-        submitButton.disabled = true;
-        waitingMessage.removeAttribute('hidden');
-        waitingMessage.style.display = 'block';
+    if (answerText === '') {
+        alert('Please enter an answer.');
+        return;
+    }
 
-        const responseTimeMs = Date.now() - questionStartTime; // Response time in milliseconds
-        const responseTimeSec = (responseTimeMs / 1000).toFixed(2); // Convert to seconds and round to 2 decimal places
+    // Disable the input and button
+    answerInput.disabled = true;
+    submitButton.disabled = true;
+    waitingMessage.removeAttribute('hidden');
+    waitingMessage.style.display = 'block';
 
-        // Submit answer and calculate score
-        $.ajax({
-            url: '<?= site_url('main_controller/submit_answer') ?>',
-            type: 'POST',
-            data: {
-                room_id: roomId,
-                question_id: questionId,
-                answer_text: answerText,
-                response_time: responseTimeSec // Include response time in seconds in the request
-            },
-            success: function(response) {
-                const data = JSON.parse(response);
-                if (data.status === 'success') {
-                    // Display the score
-                    // displayScores(data.score);
-                    // Proceed to the next question or end the quiz
-                    // ...
-                }
-            },
-            error: function() {
-                alert('An error occurred while submitting your answer.');
+    const responseTimeMs = Date.now() - questionStartTime; // Response time in milliseconds
+    const responseTimeSec = (responseTimeMs / 1000).toFixed(2); // Convert to seconds and round to 2 decimal places
+
+    // Submit answer and calculate score
+    $.ajax({
+        url: '<?= site_url('main_controller/submit_answer') ?>',
+        type: 'POST',
+        data: {
+            room_id: roomId,
+            question_id: questionId,
+            answer_text: answerText,
+            response_time: responseTimeSec // Include response time in seconds in the request
+        },
+        success: function(response) {
+            const data = JSON.parse(response);
+            if (data.status === 'success') {
+                // Display the score
+                // displayScores(data.score);
+                // Proceed to the next question or end the quiz
+                // ...
             }
-        });
+        },
+        error: function() {
+            alert('An error occurred while submitting your answer.');
+        }
     });
 }
+
 
 
     async function fetchAnswers(questionId) {
@@ -466,7 +487,7 @@
                     response.data.forEach(answer => {
                         const answerText = answer.answer_text; // Adjust this if your data structure is different
                         console.log(answer.answer_text);
-                        correctAnswer.innerHTML += `<h3>The correct answer is <span style="color: #cc0000;">${answerText}</span></h3>`;
+                        correctAnswer.innerHTML += `<h3>The correct answer is <span style="color: #28a745;">${answerText}</span></h3>`;
                     });
                 } else {
                     console.error('Element with id "correctAnswer" not found.');
@@ -491,13 +512,13 @@
         }
 
         const countdownBar = document.querySelector('.countdown-bar');
-        const submitAnswerButton = document.getElementById('submit-answer'); // Ensure you have this element
+        const submitAnswerButton = document.getElementById('submit-answer'); 
 
         // Function to update the countdown bar width and remaining time display
         function updateCountdown() {
             const width = (timeLeft / duration) * 100 + '%';
             countdownBar.style.width = width;
-            // Optionally update a display element with timeLeft here
+           
         }
 
         // Start the countdown
@@ -526,7 +547,7 @@
 
                             // Show the ranking table in SweetAlert2
                             Swal.fire({
-                                title: "Ranking per Question",
+                                title: "Ranking",
                                 html: rankingTableHtml, // Insert the ranking table here
                                 icon: "info",
                                 showConfirmButton: false, // Disable the confirm button
@@ -545,14 +566,10 @@
                                 title: "Error",
                                 text: "Failed to fetch player data.",
                                 icon: "error",
-                                showConfirmButton: false, // Disable the confirm button
-                                timer: 10000, // The alert will close automatically after 10 seconds
-                                timerProgressBar: true, // Display a progress bar showing the countdown
-                                allowOutsideClick: false, // Disable closing the alert by clicking outside
-                                allowEscapeKey: false // Disable escape key                            });
+                                confirmButtonText: "OK"
                             });
-                        }); 
-                }, 3000);// 3000 milliseconds delay
+                        });
+                }, 3000); // 3000 milliseconds delay
             }
 
         }, 1000);
@@ -648,21 +665,29 @@
             } else {
                 // Handle the end of the quiz
                 // console.log('Quiz completed!');
-                Swal.fire({
-                    title: "Good job!",
-                    text: "The quiz is now done.",
-                    icon: "success",
-                    confirmButtonText: "Go to ranking"
-                }).then((result) => {
-                    /* Read more about isConfirmed */
-                    if (result.isConfirmed) {
-                        window.location.href = '<?= site_url('/overall_ranking') ?>';
-                    }
+                // Fetch player data via AJAX
+                fetchPlayerData().then(players => {
+                    Swal.fire({
+                        title: "Good job!",
+                        text: "The quiz is now done.",
+                        icon: "success",
+                        confirmButtonText: "Go to ranking"
+                    }).then((result) => {
+                        /* Read more about isConfirmed */
+                        if (result.isConfirmed) {
+                                
+                        }
+                    });
+
+                    localStorage.removeItem('countdownTime'); // Clear the stored time
+                }).catch(error => {
+                    console.error('Error fetching player data:', error);
+                    // Optionally, handle the error or show an error message
                 });
         
                 // Refresh the page when OK is clicked
             }
-        }, 13000); // Delay to show the correct answer before moving to the next question
+        }, 14000); // Delay to show the correct answer before moving to the next question
     }
 
     function loadImage(questId) {
@@ -688,72 +713,121 @@
         });
     }
 
-
     
 
     function handleAnswerSelection(button, answerId, questionId) {
-        const answerButtons = document.querySelectorAll('.btn.answer-btn');
-        const waitingMessage = document.getElementById('waitingMessage');
+    const answerButtons = document.querySelectorAll('.btn.answer-btn');
+    const waitingMessage = document.getElementById('waitingMessage');
 
-        answerButtons.forEach(btn => {
-            btn.classList.add('disabled');
-            btn.disabled = true;
-            waitingMessage.removeAttribute('hidden');
-            waitingMessage.style.display = 'block';
-        });
+    // Disable all answer buttons
+    answerButtons.forEach(btn => {
+        btn.classList.add('disabled');
+        btn.disabled = true;
+    });
 
-        button.classList.remove('disabled');
-        button.classList.add('selected');
+    // Show waiting message
+    waitingMessage.removeAttribute('hidden');
+    waitingMessage.style.display = 'block';
 
-        const responseTimeMs = Date.now() - questionStartTime; // Response time in milliseconds
-        const responseTimeSec = (responseTimeMs / 1000).toFixed(2); // Convert to seconds and round to 2 decimal places
+    // Highlight the selected button
+    button.classList.remove('disabled');
+    button.classList.add('selected');
 
-        // Submit answer and calculate score
-        $.ajax({
-            url: '<?= site_url('main_controller/submit_answer') ?>',
-            type: 'POST',
-            data: {
-                room_id: roomId,
-                question_id: questionId,
-                answer_id: answerId,
-                response_time: responseTimeSec // Include response time in seconds in the request
-            },
-            success: function(response) {
-                const data = JSON.parse(response);
-                if (data.status === 'success') {
-                    // Display the score
-                // displayScores(data.score);
-                    // Proceed to the next question or end the quiz
-                    // ...
-                }
-            }
-        });
-    }
+    // Get the answer text
+    let answerText = ''; // Default empty string
 
-    function add_player_to_score_question(playerName, questionId, roomId) {
-        try {
-            const response = await $.ajax({
-                url: '<?= site_url('main_controller/fetch_answers')?>',
-                type: 'POST',
-                data: 
-                {   question_id: questionId,
-                    player_name: playerName,
-                    room_id: roomId
-                },
-                dataType: 'json'
-            });
-            if (response.status === 'success') {
-                alert('OK');
-
-                
-            } else {
-                console.error('Error:', response.message);
-            }
-        } catch (error) {
-            console.error('AJAX error:', error);
+    // Assuming each button has a data-answer-text attribute with the answer text
+    if (button.dataset.answerText) {
+        answerText = button.dataset.answerText;
+    } else {
+        // Fallback: You may have an input field where users can type their answer
+        const inputAnswer = document.getElementById('answer_input'); 
+        if (inputAnswer) {
+            answerText = inputAnswer.value.trim();
         }
     }
 
+    const responseTimeMs = Date.now() - questionStartTime; // Response time in milliseconds
+    const responseTimeSec = (responseTimeMs / 1000).toFixed(2); // Convert to seconds and round to 2 decimal places
+
+    // Submit answer and calculate score
+    $.ajax({
+        url: '<?= site_url('main_controller/submit_answer') ?>',
+        type: 'POST',
+        data: {
+            room_id: roomId,
+            question_id: questionId,
+            answer_id: answerId,
+            answer_text: answerText, // Include answer_text in the request
+            response_time: responseTimeSec // Include response time in seconds in the request
+        },
+        success: function(response) {
+            const data = JSON.parse(response);
+            if (data.status === 'success') {
+                // Display the score
+                // displayScores(data.score);
+                // Proceed to the next question or end the quiz
+                // ...
+            }
+        }
+    });
+}
+
+
+
+/*
+function handleAnswerSelection(button, answerId, questionId, isFill) {
+    const answerButtons = document.querySelectorAll('.btn.answer-btn');
+    const waitingMessage = document.getElementById('waitingMessage');
+    const fillInAnswerInput = document.getElementById('fillInAnswerInput'); // Assuming you have an input for fill-in-the-blank answers
+
+    answerButtons.forEach(btn => {
+        btn.classList.add('disabled');
+        btn.disabled = true;
+        waitingMessage.removeAttribute('hidden');
+        waitingMessage.style.display = 'block';
+    });
+
+    button.classList.remove('disabled');
+    button.classList.add('selected');
+
+    const responseTimeMs = Date.now() - questionStartTime; // Response time in milliseconds
+    const responseTimeSec = (responseTimeMs / 1000).toFixed(2); // Convert to seconds and round to 2 decimal places
+
+    // Prepare data for the AJAX request
+    let data = {
+        room_id: roomId,
+        question_id: questionId,
+        response_time: responseTimeSec // Include response time in seconds in the request
+    };
+
+    if (isFill) {
+        // Handle fill-in-the-blank answers
+        const fillInAnswer = fillInAnswerInput.value.trim(); // Get the fill-in-the-blank answer
+        data.answer_text = fillInAnswer; // Include the fill-in-the-blank answer in the request
+    } else {
+        // Handle multiple-choice answers
+        data.answer_id = answerId; // Include the selected answer ID in the request
+    }
+
+    // Submit answer and calculate score
+    $.ajax({
+        url: '<?= site_url('main_controller/submit_answer') ?>',
+        type: 'POST',
+        data: data,
+        success: function(response) {
+            const data = JSON.parse(response);
+            if (data.status === 'success') {
+                // Display the score
+                // displayScores(data.score);
+                // Proceed to the next question or end the quiz
+                // ...
+            }
+        }
+    });
+}
+
+*/
     speakButton.addEventListener('click', () => {
         const questionText = questionTextElement.textContent;
         const speech = new SpeechSynthesisUtterance(questionText);

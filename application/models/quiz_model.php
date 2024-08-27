@@ -158,6 +158,7 @@ class quiz_model extends CI_Model {
         return FALSE; // Return FALSE if the question does not exist
     }
 
+    /*
     public function save_participant_answer($participantId, $roomId, $questionId, $answerId, $answerText, $responseTime) {
         // Check if the answer is correct
         $isCorrect = $this->is_correct_answer($questionId, $answerId, $answerText);
@@ -183,6 +184,61 @@ class quiz_model extends CI_Model {
         
         // Return success response if needed
         echo json_encode(['status' => 'success', 'message' => 'Answer saved successfully']);
+    }
+    
+    */
+
+    public function save_participant_answer($participantId, $roomId, $questionId, $answerId, $answerText, $responseTime) {
+
+
+        // Check if the answer is correct
+        $isCorrect = $this->is_correct_answer($questionId, $answerId, $answerText);
+
+        $correctAnswers = $this->get_correct_answers($questionId);
+
+         // Convert the array of correct answers to a comma-separated string
+         $correctAnswerString = implode(', ', array_column($correctAnswers, 'answer_text'));
+
+        // Save the participant's answer with response time
+        $answerData = [
+            'user_id' => $participantId,
+            'room_id' => $roomId,
+            'question_id' => $questionId,
+            'answer_id' => $answerId,
+            'answer_text' => $answerText,
+            'is_correct' => $isCorrect ? 1 : 0,
+            'response_time' => $responseTime,
+            'created_at' => date('Y-m-d H:i:s') // Optional: track when the answer was saved
+        ];
+    
+        // Insert into participant_answers table
+        $result = $this->db->insert('participant_answers', $answerData);
+        if (!$result) {
+            $error = $this->db->error();
+            echo json_encode(['status' => 'error', 'message' => 'Failed to save answer: ' . $error['message']]);
+            return;
+        }
+    
+        // Log the participant's answer into quiz_logs table
+        $logData = [
+            'participant_id' => $participantId,
+            'question_id' => $questionId,
+            'answer_text' => $answerText,
+            'correct_answer' => $correctAnswerString,
+            'is_correct' => $isCorrect ? 1 : 0,
+            'response_time' => $responseTime,
+            'created_at' => date('Y-m-d H:i:s')
+        ];
+    
+        $logResult = $this->db->insert('quiz_logs', $logData);
+        if (!$logResult) {
+            $error = $this->db->error();
+            echo json_encode(['status' => 'error', 'message' => 'Failed to log answer: ' . $error['message']]);
+            return;
+        }
+    
+        // Return success response if needed
+        echo json_encode(['status' => 'success', 'message' => 'Answer and log saved successfully']);
     }
     
     
@@ -252,6 +308,42 @@ class quiz_model extends CI_Model {
         
         return $totalScore;
     }  
+
+    public function get_logs_by_room($roomId, $participantId = null) {
+        $this->db->select('quiz_logs.*, participants.name as participant_name, questions.question_text, 
+                           answers.answer_text as correct_answer, quiz_logs.answer_text, quiz_logs.is_correct, 
+                           quiz_logs.response_time');
+        $this->db->from('quiz_logs');
+        $this->db->join('participants', 'quiz_logs.participant_id = participants.id');
+        $this->db->join('questions', 'quiz_logs.question_id = questions.id');
+        $this->db->join('answers', 'questions.id = answers.question_id AND answers.is_correct = 1', 'left');
+        $this->db->where('participants.room_id', $roomId); // Filter by room ID
+        
+        if ($participantId !== null) {
+            $this->db->where('quiz_logs.participant_id', $participantId); // Filter by participant ID if provided
+        }
+        
+        $query = $this->db->get();
+        return $query->result_array();
+    }
+
+    public function get_logs_by_room_and_participant($roomId, $participantId) {
+        $this->db->select('quiz_logs.*, participants.name as participant_name, questions.question_text');
+        $this->db->from('quiz_logs');
+        $this->db->join('participants', 'quiz_logs.participant_id = participants.id');
+        $this->db->join('questions', 'quiz_logs.question_id = questions.id');
+        $this->db->where('participants.room_id', $roomId);
+        $this->db->where('quiz_logs.participant_id', $participantId); // Filter by participant ID
+        
+        $query = $this->db->get();
+        return $query->result_array();
+    }
+    
+    
+    
+    
+
+    
 
     public function get_question_score($userId, $roomId, $questionId) {
         $this->db->select('score');
@@ -486,6 +578,24 @@ class quiz_model extends CI_Model {
         return $query->result_array();
     }    
 
+    public function get_answer_text($answerId, $questionId) {
+        // Select the answer text from the answers table
+        $this->db->select('answer_text');
+        $this->db->from('answers');
+        $this->db->where('id', $answerId);
+        $this->db->where('question_id', $questionId);
+        
+        $query = $this->db->get();
+        
+        // Check if the query returns any rows
+        if ($query->num_rows() > 0) {
+            return $query->row()->answer_text; // Return the answer text
+        } else {
+            return null; // Return null if no result found
+        }
+    }
+    
+
     public function is_correct_answer($questionId, $answerId = null, $answerText = null) {
         // Check if the question is a fill-in-the-blank type
         $this->db->select('isFill');
@@ -532,6 +642,16 @@ class quiz_model extends CI_Model {
         $query = $this->db->get('answers');
         return $query->result_array(); // Returns array of associative arrays with 'id' key
     }
+
+    public function get_correct_answer($question_id) {
+        $this->db->select('id, answer_text'); // Select both id and answer_text
+        $this->db->where('question_id', $question_id);
+        $this->db->where('is_correct', 1);
+        $query = $this->db->get('answers');
+        
+        return $query->row_array(); // Return a single correct answer as an associative array
+    }
+    
     
 
     public function get_image_path($questId) {
